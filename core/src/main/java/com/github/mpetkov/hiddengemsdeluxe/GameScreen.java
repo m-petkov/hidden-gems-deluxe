@@ -4,6 +4,9 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
+import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.utils.Timer;
@@ -17,6 +20,8 @@ public class GameScreen implements Screen {
 
     private final Main game;
     private ShapeRenderer shapeRenderer;
+    private BitmapFont font;
+    private SpriteBatch batch;
 
     private static final int ROWS = 12;
     private static final int COLS = 6;
@@ -27,7 +32,9 @@ public class GameScreen implements Screen {
 
     private int fallingRow = ROWS - 1;
     private int fallingCol = 2;
-    private int fallingColor;
+    private int[] fallingColors = new int[3];
+    private int[] nextColors = new int[3];
+
     private float visualFallingY = fallingRow;
     private float animationProgress = 0;
     private boolean isAnimating = false;
@@ -44,8 +51,16 @@ public class GameScreen implements Screen {
     @Override
     public void show() {
         shapeRenderer = new ShapeRenderer();
+        font = new BitmapFont();
+        font.setColor(Color.WHITE);
+        batch = new SpriteBatch();
+
         random = new Random();
-        fallingColor = random.nextInt(4);
+        for (int i = 0; i < 3; i++) {
+            nextColors[i] = random.nextInt(4);
+        }
+
+        generateNewFallingColumn();
 
         grid = new int[ROWS][COLS];
         for (int row = 0; row < ROWS; row++)
@@ -65,20 +80,36 @@ public class GameScreen implements Screen {
                     isAnimating = true;
                     animationProgress = 0f;
                 } else {
-                    grid[fallingRow][fallingCol] = fallingColor;
-                    addParticles(fallingCol, fallingRow, getColor(fallingColor));
-                    fallingRow = ROWS - 1;
-                    fallingCol = 2 + random.nextInt(2);
-                    fallingColor = random.nextInt(4);
-                    animationProgress = 0f;
-                    visualFallingY = fallingRow;
+                    for (int i = 0; i < 3; i++) {
+                        int row = fallingRow - i;
+                        if (row >= 0 && row < ROWS) {
+                            grid[row][fallingCol] = fallingColors[i];
+                            addParticles(fallingCol, row, getColor(fallingColors[i]));
+                        }
+                    }
+                    generateNewFallingColumn();
                 }
             }
         }, 0.5f, 0.5f);
     }
 
+    private void generateNewFallingColumn() {
+        System.arraycopy(nextColors, 0, fallingColors, 0, 3);
+        fallingRow = ROWS - 1;
+        fallingCol = 2 + random.nextInt(2);
+        animationProgress = 0f;
+        visualFallingY = fallingRow;
+
+        for (int i = 0; i < 3; i++) {
+            nextColors[i] = random.nextInt(4);
+        }
+    }
+
     private boolean canRise() {
-        return fallingRow > 0 && grid[fallingRow - 1][fallingCol] == -1;
+        return fallingRow >= 3 &&
+            grid[fallingRow - 1][fallingCol] == -1 &&
+            grid[fallingRow - 2][fallingCol] == -1 &&
+            grid[fallingRow - 3][fallingCol] == -1;
     }
 
     @Override
@@ -86,7 +117,6 @@ public class GameScreen implements Screen {
         Gdx.gl.glClearColor(0.08f, 0.08f, 0.12f, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
-        // Плавна анимация на изкачване
         if (isAnimating) {
             animationProgress += delta * 5f;
             if (animationProgress >= 1f) {
@@ -115,7 +145,7 @@ public class GameScreen implements Screen {
             }
         }
 
-        // Камъни
+        // Камъни в решетката
         for (int row = 0; row < ROWS; row++) {
             for (int col = 0; col < COLS; col++) {
                 int color = grid[row][col];
@@ -125,13 +155,35 @@ public class GameScreen implements Screen {
             }
         }
 
-        // Падащ (вдигащ се) камък
-        draw3DBlock(gridOffsetX + fallingCol * CELL_SIZE, gridOffsetY + visualFallingY * CELL_SIZE, getColor(fallingColor));
+        // Падащи 3 камъка
+        for (int i = 0; i < 3; i++) {
+            int rowOffset = i;
+            float drawY = (visualFallingY - rowOffset) * CELL_SIZE;
+            if (fallingRow - rowOffset >= 0) {
+                draw3DBlock(gridOffsetX + fallingCol * CELL_SIZE, gridOffsetY + drawY, getColor(fallingColors[i]));
+            }
+        }
 
         // Частици
         for (Particle p : particles) {
             shapeRenderer.setColor(p.color.r, p.color.g, p.color.b, p.life / p.initialLife);
             shapeRenderer.circle(p.x, p.y, p.size);
+        }
+
+        // "Next:" текст + следващи блокчета
+        float previewX = gridOffsetX + COLS * CELL_SIZE + 40;
+
+        // Ред 0 за текста
+        float nextLabelY = gridOffsetY + (ROWS - 1) * CELL_SIZE + CELL_SIZE * 0.75f;
+        batch.begin();
+        font.draw(batch, "Next:", previewX, nextLabelY);
+        batch.end();
+
+        // Ред 1 за блоковете
+        float nextBlockY = gridOffsetY + (ROWS - 2) * CELL_SIZE;
+        for (int i = 0; i < 3; i++) {
+            float y = nextBlockY - i * (CELL_SIZE + 5);
+            draw3DBlock(previewX, y, getColor(nextColors[i]));
         }
 
         shapeRenderer.end();
@@ -205,6 +257,8 @@ public class GameScreen implements Screen {
     @Override public void hide() {}
     @Override public void dispose() {
         shapeRenderer.dispose();
+        font.dispose();
+        batch.dispose();
     }
 
     private static class Particle {
