@@ -26,7 +26,7 @@ public class GameScreen implements Screen {
 
     private static final int ROWS = 12;
     private static final int COLS = 6;
-    private static final int CELL_SIZE = 60;
+    private int CELL_SIZE;
 
     private int gridOffsetX;
     private int gridOffsetY;
@@ -54,13 +54,18 @@ public class GameScreen implements Screen {
         shapeRenderer = new ShapeRenderer();
         batch = new SpriteBatch();
 
+        // Размер на клетка, спрямо височината на екрана
+        CELL_SIZE = Gdx.graphics.getHeight() / ROWS;
+
+        int sidePanelWidth = CELL_SIZE * 2;
+        gridOffsetX = (Gdx.graphics.getWidth() - COLS * CELL_SIZE - sidePanelWidth) / 2;
+        gridOffsetY = 0;
+
         // Зареждане на TTF шрифта с FreeTypeFontGenerator
         FreeTypeFontGenerator generator = new FreeTypeFontGenerator(Gdx.files.internal("fonts/Play-Regular.ttf"));
         FreeTypeFontGenerator.FreeTypeFontParameter parameter = new FreeTypeFontGenerator.FreeTypeFontParameter();
-        parameter.size = 28; // Размер на шрифта (можеш да го промениш)
+        parameter.size = (int)(CELL_SIZE * 0.5f);
         parameter.color = Color.WHITE;
-
-        // 3D ефекти: сянка и контур
         parameter.shadowOffsetX = 2;
         parameter.shadowOffsetY = 2;
         parameter.shadowColor = new Color(0, 0, 0, 0.5f);
@@ -68,7 +73,7 @@ public class GameScreen implements Screen {
         parameter.borderColor = Color.BLACK;
 
         font = generator.generateFont(parameter);
-        generator.dispose(); // освобождаваме генератора след създаването
+        generator.dispose();
 
         random = new Random();
         for (int i = 0; i < 3; i++) {
@@ -81,9 +86,6 @@ public class GameScreen implements Screen {
         for (int row = 0; row < ROWS; row++)
             for (int col = 0; col < COLS; col++)
                 grid[row][col] = -1;
-
-        gridOffsetX = (Gdx.graphics.getWidth() - COLS * CELL_SIZE) / 2;
-        gridOffsetY = (Gdx.graphics.getHeight() - ROWS * CELL_SIZE) / 2;
 
         Timer.schedule(new Timer.Task() {
             @Override
@@ -152,7 +154,6 @@ public class GameScreen implements Screen {
 
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
 
-        // Фон на решетката
         for (int row = 0; row < ROWS; row++) {
             for (int col = 0; col < COLS; col++) {
                 shapeRenderer.setColor(0.15f, 0.15f, 0.2f, 1);
@@ -160,7 +161,6 @@ public class GameScreen implements Screen {
             }
         }
 
-        // Камъни в решетката
         for (int row = 0; row < ROWS; row++) {
             for (int col = 0; col < COLS; col++) {
                 int color = grid[row][col];
@@ -170,7 +170,6 @@ public class GameScreen implements Screen {
             }
         }
 
-        // Падащи 3 камъка
         for (int i = 0; i < 3; i++) {
             int rowOffset = i;
             float drawY = (visualFallingY - rowOffset) * CELL_SIZE;
@@ -179,35 +178,20 @@ public class GameScreen implements Screen {
             }
         }
 
-        // Частици
         for (Particle p : particles) {
             shapeRenderer.setColor(p.color.r, p.color.g, p.color.b, p.life / p.initialLife);
             shapeRenderer.circle(p.x, p.y, p.size);
         }
 
-
-        // "Next:" текст + следващи блокчета
         float previewX = gridOffsetX + COLS * CELL_SIZE + 40;
-
-        // Ред 1 за блоковете
         float nextBlockY = gridOffsetY + (ROWS - 2) * CELL_SIZE;
-
-        // Y позиция — подравнена с горния ръб на блока
         float nextLabelY = nextBlockY + CELL_SIZE - 6f;
-
         String nextText = "Next:";
         GlyphLayout layout = new GlyphLayout(font, nextText);
-
-        // Текстът започва точно при previewX
         float textX = previewX + CELL_SIZE / 2f - layout.width / 2f;
         float topRowY = gridOffsetY + (ROWS - 1) * CELL_SIZE + CELL_SIZE / 2f;
-        float textY = topRowY + layout.height / 2f;;
+        float textY = topRowY + layout.height / 2f;
 
-
-
-
-        // Ред 1 за блоковете
-        // Следващи блокове (остават непроменени)
         for (int i = 0; i < 3; i++) {
             float y = nextBlockY - i * (CELL_SIZE);
             draw3DBlock(previewX, y, getColor(nextColors[i]));
@@ -215,13 +199,12 @@ public class GameScreen implements Screen {
         shapeRenderer.end();
 
         batch.begin();
-        font.setColor(0, 0, 0, 0.5f); // Сянка
+        font.setColor(0, 0, 0, 0.5f);
         font.draw(batch, nextText, textX + 1, textY - 1);
-        font.setColor(Color.ORANGE); // Основен текст
+        font.setColor(Color.ORANGE);
         font.draw(batch, nextText, textX, textY);
         batch.end();
 
-        // Рамки на решетката
         shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
         shapeRenderer.setColor(0.1f, 0.1f, 0.15f, 1);
         for (int row = 0; row <= ROWS; row++) {
@@ -237,7 +220,6 @@ public class GameScreen implements Screen {
         float padding = 6f;
         float size = CELL_SIZE - 2 * padding;
         float radius = size * 0.1f;
-
         float left = x + padding;
         float bottom = y + padding;
 
