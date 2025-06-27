@@ -67,6 +67,8 @@ public class GameScreen implements Screen, InputProcessor {
 
     private int score = 0;
 
+    private float currentDropInterval = 1.5f;
+
     public GameScreen(Main game) {
         this.game = game;
     }
@@ -106,6 +108,8 @@ public class GameScreen implements Screen, InputProcessor {
     }
 
     private void scheduleDrop(float interval) {
+        currentDropInterval = interval;
+
         if (dropTask != null) dropTask.cancel();
 
         dropTask = new Timer.Task() {
@@ -371,6 +375,12 @@ public class GameScreen implements Screen, InputProcessor {
         float scoreX = gridOffsetX - scoreLayout.width - 40;
         float scoreY = topRowY + scoreLayout.height / 2f;
 
+        float currentDropInterval = this.currentDropInterval;
+        String speedText = String.format("Speed: %.2f s", currentDropInterval);
+        GlyphLayout speedLayout = new GlyphLayout(font, speedText);
+        float speedX = scoreX + scoreLayout.width - speedLayout.width;
+        float speedY = scoreY - scoreLayout.height - 10;
+
         for (int i = 0; i < 3; i++) {
             float y = nextBlockY - i * CELL_SIZE;
             draw3DBlock(previewX, y, getColor(nextColors[i]));
@@ -380,11 +390,11 @@ public class GameScreen implements Screen, InputProcessor {
             float x = gridOffsetX + m.col * CELL_SIZE;
             float y = gridOffsetY + m.row * CELL_SIZE;
             float alpha = 1f - m.timer / 0.8f;
-            float pulse = 0.5f + 0.5f * MathUtils.sin(alpha * MathUtils.PI * 2); // пулсация (0 -> 1 -> 0)
+            float pulse = 0.5f + 0.5f * MathUtils.sin(alpha * MathUtils.PI * 2);
 
-            Color glowTarget = new Color(1f, 0.85f, 0.6f, 1f); // златисто-жълт оттенък
+            Color glowTarget = new Color(1f, 0.85f, 0.6f, 1f);
             Color glowColor = m.color.cpy().lerp(glowTarget, pulse);
-            glowColor.a = 0.7f + 0.3f * pulse; // алфа трептене между 0.7 и 1.0
+            glowColor.a = 0.7f + 0.3f * pulse;
 
             shapeRenderer.setColor(glowColor);
             shapeRenderer.rect(x + 2, y + 2, CELL_SIZE - 4, CELL_SIZE - 4);
@@ -393,17 +403,19 @@ public class GameScreen implements Screen, InputProcessor {
         shapeRenderer.end();
 
         batch.begin();
+
+        // Сянка
         font.setColor(0, 0, 0, 0.5f);
         font.draw(batch, nextText, textX + 1, textY - 1);
+        font.draw(batch, scoreText, scoreX + 1, scoreY - 1);
+        font.draw(batch, speedText, speedX + 1, speedY - 1);
+
+        // Основен текст
         font.setColor(Color.ORANGE);
         font.draw(batch, nextText, textX, textY);
-        // Shadow
-        font.setColor(0, 0, 0, 0.5f);
-        font.draw(batch, scoreText, scoreX + 1, scoreY - 1);
-
-        // Main text
-        font.setColor(Color.ORANGE);
         font.draw(batch, scoreText, scoreX, scoreY);
+        font.draw(batch, speedText, speedX, speedY);
+
         batch.end();
 
         shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
