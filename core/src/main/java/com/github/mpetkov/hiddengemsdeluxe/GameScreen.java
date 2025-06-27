@@ -17,7 +17,7 @@ public class GameScreen implements Screen, InputProcessor {
 
     private static class MatchMarker {
         int col, row;
-        float timer = 0.5f;
+        float timer = 0.8f; // беше 0.5f
         Color color;
 
         MatchMarker(int col, int row, Color color) {
@@ -233,9 +233,9 @@ public class GameScreen implements Screen, InputProcessor {
                             isProcessingMatches = false;
                             processMatches();
                         }
-                    }, 0.5f);
+                    }, 0.8f); // беше 0.5f
                 }
-            }, 0.5f);
+            }, 0.8f); // беше 0.5f
         }
 
         return anyRemoved;
@@ -371,7 +371,14 @@ public class GameScreen implements Screen, InputProcessor {
         for (MatchMarker m : matchMarkers) {
             float x = gridOffsetX + m.col * CELL_SIZE;
             float y = gridOffsetY + m.row * CELL_SIZE;
-            shapeRenderer.setColor(m.color.cpy().lerp(Color.WHITE, 1f - m.timer * 2));
+            float alpha = 1f - m.timer / 0.8f;
+            float pulse = 0.5f + 0.5f * MathUtils.sin(alpha * MathUtils.PI * 2); // пулсация (0 -> 1 -> 0)
+
+            Color glowTarget = new Color(1f, 0.85f, 0.6f, 1f); // златисто-жълт оттенък
+            Color glowColor = m.color.cpy().lerp(glowTarget, pulse);
+            glowColor.a = 0.7f + 0.3f * pulse; // алфа трептене между 0.7 и 1.0
+
+            shapeRenderer.setColor(glowColor);
             shapeRenderer.rect(x + 2, y + 2, CELL_SIZE - 4, CELL_SIZE - 4);
         }
 
