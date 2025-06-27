@@ -15,6 +15,26 @@ import java.util.*;
 
 public class GameScreen implements Screen, InputProcessor {
 
+    private static class MatchMarker {
+        int col, row;
+        float timer = 0.5f;
+        Color color;
+
+        MatchMarker(int col, int row, Color color) {
+            this.col = col;
+            this.row = row;
+            this.color = color;
+        }
+
+        void update(float delta) {
+            timer -= delta;
+        }
+
+        boolean isExpired() {
+            return timer <= 0;
+        }
+    }
+
     private final Main game;
     private ShapeRenderer shapeRenderer;
     private BitmapFont font;
@@ -41,6 +61,9 @@ public class GameScreen implements Screen, InputProcessor {
     private int[][] grid;
 
     private List<Particle> particles = new ArrayList<>();
+    private List<MatchMarker> matchMarkers = new ArrayList<>();
+
+    private boolean isProcessingMatches = false;
 
     public GameScreen(Main game) {
         this.game = game;
@@ -86,7 +109,7 @@ public class GameScreen implements Screen, InputProcessor {
         dropTask = new Timer.Task() {
             @Override
             public void run() {
-                if (isAnimating) return;
+                if (isAnimating || isProcessingMatches) return;
 
                 if (canRise()) {
                     fallingRow--;
@@ -172,11 +195,41 @@ public class GameScreen implements Screen, InputProcessor {
         for (int row = 0; row < ROWS; row++) {
             for (int col = 0; col < COLS; col++) {
                 if (toRemove[row][col]) {
-                    addParticles(col, row, getColor(grid[row][col]));
-                    grid[row][col] = -1;
+                    Color c = getColor(grid[row][col]);
+                    matchMarkers.add(new MatchMarker(col, row, c));
                     anyRemoved = true;
                 }
             }
+        }
+
+        if (anyRemoved) {
+            isProcessingMatches = true;
+
+            // Копираме toRemove в нов финален масив за употреба в Timer
+            final boolean[][] finalToRemove = new boolean[ROWS][COLS];
+            for (int row = 0; row < ROWS; row++) {
+                System.arraycopy(toRemove[row], 0, finalToRemove[row], 0, COLS);
+            }
+
+            Timer.schedule(new Timer.Task() {
+                @Override
+                public void run() {
+                    for (int row = 0; row < ROWS; row++) {
+                        for (int col = 0; col < COLS; col++) {
+                            if (finalToRemove[row][col]) {
+                                Color c = getColor(grid[row][col]);
+                                grid[row][col] = -1;
+                                addParticles(col, row, c);
+                            }
+                        }
+                    }
+
+                    matchMarkers.clear(); // само визуални ефекти
+                    applyGravity();
+                    processMatches();
+                    isProcessingMatches = false;
+                }
+            }, 0.5f);
         }
 
         return anyRemoved;
@@ -198,13 +251,20 @@ public class GameScreen implements Screen, InputProcessor {
     }
 
     private void processMatches() {
-        boolean found;
-        do {
-            found = checkAndRemoveMatches();
-            if (found) {
-                applyGravity();
+        if (isProcessingMatches) return;
+
+        isProcessingMatches = true;
+
+        Timer.schedule(new Timer.Task() {
+            @Override
+            public void run() {
+                boolean found = checkAndRemoveMatches();
+                if (!found) {
+                    isProcessingMatches = false;
+                }
+                // ако е намерено, checkAndRemoveMatches ще насрочи нова задача след 0.5 секунди
             }
-        } while (found);
+        }, 0.5f);
     }
 
 
@@ -237,6 +297,7 @@ public class GameScreen implements Screen, InputProcessor {
         return true;
     }
 
+
     @Override
     public void render(float delta) {
         Gdx.gl.glClearColor(0.08f, 0.08f, 0.12f, 1);
@@ -256,6 +317,11 @@ public class GameScreen implements Screen, InputProcessor {
         particles.removeIf(p -> {
             p.update(delta);
             return p.life <= 0;
+        });
+
+        matchMarkers.removeIf(m -> {
+            m.update(delta);
+            return m.isExpired();
         });
 
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
@@ -298,6 +364,13 @@ public class GameScreen implements Screen, InputProcessor {
         for (int i = 0; i < 3; i++) {
             float y = nextBlockY - i * CELL_SIZE;
             draw3DBlock(previewX, y, getColor(nextColors[i]));
+        }
+
+        for (MatchMarker m : matchMarkers) {
+            float x = gridOffsetX + m.col * CELL_SIZE;
+            float y = gridOffsetY + m.row * CELL_SIZE;
+            shapeRenderer.setColor(m.color.cpy().lerp(Color.WHITE, 1f - m.timer * 2));
+            shapeRenderer.rect(x + 2, y + 2, CELL_SIZE - 4, CELL_SIZE - 4);
         }
 
         shapeRenderer.end();
