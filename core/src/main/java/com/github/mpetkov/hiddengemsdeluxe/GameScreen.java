@@ -205,7 +205,6 @@ public class GameScreen implements Screen, InputProcessor {
         if (anyRemoved) {
             isProcessingMatches = true;
 
-            // Копираме toRemove в нов финален масив за употреба в Timer
             final boolean[][] finalToRemove = new boolean[ROWS][COLS];
             for (int row = 0; row < ROWS; row++) {
                 System.arraycopy(toRemove[row], 0, finalToRemove[row], 0, COLS);
@@ -224,10 +223,17 @@ public class GameScreen implements Screen, InputProcessor {
                         }
                     }
 
-                    matchMarkers.clear(); // само визуални ефекти
+                    matchMarkers.clear();
                     applyGravity();
-                    processMatches();
-                    isProcessingMatches = false;
+
+                    // Ново изчакване преди следваща проверка
+                    Timer.schedule(new Timer.Task() {
+                        @Override
+                        public void run() {
+                            isProcessingMatches = false;
+                            processMatches();
+                        }
+                    }, 0.5f);
                 }
             }, 0.5f);
         }
@@ -255,16 +261,12 @@ public class GameScreen implements Screen, InputProcessor {
 
         isProcessingMatches = true;
 
-        Timer.schedule(new Timer.Task() {
-            @Override
-            public void run() {
-                boolean found = checkAndRemoveMatches();
-                if (!found) {
-                    isProcessingMatches = false;
-                }
-                // ако е намерено, checkAndRemoveMatches ще насрочи нова задача след 0.5 секунди
-            }
-        }, 0.5f);
+        boolean found = checkAndRemoveMatches(); // Търсим нови съвпадения
+
+        if (!found) {
+            isProcessingMatches = false;
+        }
+        // Ако има, checkAndRemoveMatches ще се погрижи да извика пак processMatches() след 0.5 секунди
     }
 
 
