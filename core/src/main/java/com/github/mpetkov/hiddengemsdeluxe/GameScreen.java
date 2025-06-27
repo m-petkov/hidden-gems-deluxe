@@ -4,12 +4,13 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
-import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.utils.Timer;
+import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
+import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -51,9 +52,23 @@ public class GameScreen implements Screen {
     @Override
     public void show() {
         shapeRenderer = new ShapeRenderer();
-        font = new BitmapFont();
-        font.setColor(Color.WHITE);
         batch = new SpriteBatch();
+
+        // Зареждане на TTF шрифта с FreeTypeFontGenerator
+        FreeTypeFontGenerator generator = new FreeTypeFontGenerator(Gdx.files.internal("fonts/Play-Regular.ttf"));
+        FreeTypeFontGenerator.FreeTypeFontParameter parameter = new FreeTypeFontGenerator.FreeTypeFontParameter();
+        parameter.size = 28; // Размер на шрифта (можеш да го промениш)
+        parameter.color = Color.WHITE;
+
+        // 3D ефекти: сянка и контур
+        parameter.shadowOffsetX = 2;
+        parameter.shadowOffsetY = 2;
+        parameter.shadowColor = new Color(0, 0, 0, 0.5f);
+        parameter.borderWidth = 1f;
+        parameter.borderColor = Color.BLACK;
+
+        font = generator.generateFont(parameter);
+        generator.dispose(); // освобождаваме генератора след създаването
 
         random = new Random();
         for (int i = 0; i < 3; i++) {
@@ -170,23 +185,41 @@ public class GameScreen implements Screen {
             shapeRenderer.circle(p.x, p.y, p.size);
         }
 
+
         // "Next:" текст + следващи блокчета
         float previewX = gridOffsetX + COLS * CELL_SIZE + 40;
 
-        // Ред 0 за текста
-        float nextLabelY = gridOffsetY + (ROWS - 1) * CELL_SIZE + CELL_SIZE * 0.75f;
-        batch.begin();
-        font.draw(batch, "Next:", previewX, nextLabelY);
-        batch.end();
-
         // Ред 1 за блоковете
         float nextBlockY = gridOffsetY + (ROWS - 2) * CELL_SIZE;
+
+        // Y позиция — подравнена с горния ръб на блока
+        float nextLabelY = nextBlockY + CELL_SIZE - 6f;
+
+        String nextText = "Next:";
+        GlyphLayout layout = new GlyphLayout(font, nextText);
+
+        // Текстът започва точно при previewX
+        float textX = previewX + CELL_SIZE / 2f - layout.width / 2f;
+        float topRowY = gridOffsetY + (ROWS - 1) * CELL_SIZE + CELL_SIZE / 2f;
+        float textY = topRowY + layout.height / 2f;;
+
+
+
+
+        // Ред 1 за блоковете
+        // Следващи блокове (остават непроменени)
         for (int i = 0; i < 3; i++) {
-            float y = nextBlockY - i * (CELL_SIZE + 5);
+            float y = nextBlockY - i * (CELL_SIZE);
             draw3DBlock(previewX, y, getColor(nextColors[i]));
         }
-
         shapeRenderer.end();
+
+        batch.begin();
+        font.setColor(0, 0, 0, 0.5f); // Сянка
+        font.draw(batch, nextText, textX + 1, textY - 1);
+        font.setColor(Color.ORANGE); // Основен текст
+        font.draw(batch, nextText, textX, textY);
+        batch.end();
 
         // Рамки на решетката
         shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
