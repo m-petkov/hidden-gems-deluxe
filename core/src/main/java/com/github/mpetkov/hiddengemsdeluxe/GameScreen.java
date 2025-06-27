@@ -82,6 +82,8 @@ public class GameScreen implements Screen, InputProcessor {
 
     private boolean wasInitialized = false;
 
+    private AnimatedBackground background;
+
     public GameScreen(Main game) {
         this.game = game;
     }
@@ -110,6 +112,8 @@ public class GameScreen implements Screen, InputProcessor {
         shapeRenderer = new ShapeRenderer();
         batch = new SpriteBatch();
         Gdx.input.setInputProcessor(this);
+
+        background = new AnimatedBackground(100); // Брой падащи линии
 
         CELL_SIZE = Gdx.graphics.getHeight() / ROWS;
         int sidePanelWidth = CELL_SIZE * 2;
@@ -361,8 +365,11 @@ public class GameScreen implements Screen, InputProcessor {
 
     @Override
     public void render(float delta) {
-        Gdx.gl.glClearColor(0.08f, 0.08f, 0.12f, 1);
+        Gdx.gl.glClearColor(0f, 0f, 0f, 1f);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
+
+        background.update(delta);
+        background.render(shapeRenderer);
 
         if (isAnimating) {
             animationProgress += delta * 5f;
