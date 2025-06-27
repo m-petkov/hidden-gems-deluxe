@@ -65,6 +65,8 @@ public class GameScreen implements Screen, InputProcessor {
 
     private boolean isProcessingMatches = false;
 
+    private int score = 0;
+
     public GameScreen(Main game) {
         this.game = game;
     }
@@ -198,6 +200,7 @@ public class GameScreen implements Screen, InputProcessor {
                     Color c = getColor(grid[row][col]);
                     matchMarkers.add(new MatchMarker(col, row, c));
                     anyRemoved = true;
+                    score++; // ⬅ Добавяне на 1 точка за всеки премахнат блок
                 }
             }
         }
@@ -363,6 +366,11 @@ public class GameScreen implements Screen, InputProcessor {
         float topRowY = gridOffsetY + (ROWS - 1) * CELL_SIZE + CELL_SIZE / 2f;
         float textY = topRowY + layout.height / 2f;
 
+        String scoreText = "Score: " + score;
+        GlyphLayout scoreLayout = new GlyphLayout(font, scoreText);
+        float scoreX = gridOffsetX - scoreLayout.width - 40;
+        float scoreY = topRowY + scoreLayout.height / 2f;
+
         for (int i = 0; i < 3; i++) {
             float y = nextBlockY - i * CELL_SIZE;
             draw3DBlock(previewX, y, getColor(nextColors[i]));
@@ -389,6 +397,13 @@ public class GameScreen implements Screen, InputProcessor {
         font.draw(batch, nextText, textX + 1, textY - 1);
         font.setColor(Color.ORANGE);
         font.draw(batch, nextText, textX, textY);
+        // Shadow
+        font.setColor(0, 0, 0, 0.5f);
+        font.draw(batch, scoreText, scoreX + 1, scoreY - 1);
+
+        // Main text
+        font.setColor(Color.ORANGE);
+        font.draw(batch, scoreText, scoreX, scoreY);
         batch.end();
 
         shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
