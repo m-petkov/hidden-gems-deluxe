@@ -1,23 +1,19 @@
 package com.github.mpetkov.hiddengemsdeluxe;
 
-import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.*;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
+import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.utils.Timer;
-import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
-import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 
-public class GameScreen implements Screen {
+public class GameScreen implements Screen, InputProcessor {
 
     private final Main game;
     private ShapeRenderer shapeRenderer;
@@ -40,6 +36,7 @@ public class GameScreen implements Screen {
     private float animationProgress = 0;
     private boolean isAnimating = false;
 
+    private Timer.Task dropTask;
     private Random random;
     private int[][] grid;
 
@@ -53,15 +50,13 @@ public class GameScreen implements Screen {
     public void show() {
         shapeRenderer = new ShapeRenderer();
         batch = new SpriteBatch();
+        Gdx.input.setInputProcessor(this);
 
-        // Размер на клетка, спрямо височината на екрана
         CELL_SIZE = Gdx.graphics.getHeight() / ROWS;
-
         int sidePanelWidth = CELL_SIZE * 2;
         gridOffsetX = (Gdx.graphics.getWidth() - COLS * CELL_SIZE - sidePanelWidth) / 2;
         gridOffsetY = 0;
 
-        // Зареждане на TTF шрифта с FreeTypeFontGenerator
         FreeTypeFontGenerator generator = new FreeTypeFontGenerator(Gdx.files.internal("fonts/Play-Regular.ttf"));
         FreeTypeFontGenerator.FreeTypeFontParameter parameter = new FreeTypeFontGenerator.FreeTypeFontParameter();
         parameter.size = (int)(CELL_SIZE * 0.5f);
@@ -71,23 +66,24 @@ public class GameScreen implements Screen {
         parameter.shadowColor = new Color(0, 0, 0, 0.5f);
         parameter.borderWidth = 1f;
         parameter.borderColor = Color.BLACK;
-
         font = generator.generateFont(parameter);
         generator.dispose();
 
         random = new Random();
-        for (int i = 0; i < 3; i++) {
-            nextColors[i] = random.nextInt(4);
-        }
+        for (int i = 0; i < 3; i++) nextColors[i] = random.nextInt(4);
 
         generateNewFallingColumn();
 
         grid = new int[ROWS][COLS];
-        for (int row = 0; row < ROWS; row++)
-            for (int col = 0; col < COLS; col++)
-                grid[row][col] = -1;
+        for (int[] row : grid) Arrays.fill(row, -1);
 
-        Timer.schedule(new Timer.Task() {
+        scheduleDrop(1.5f); // забавено тройно
+    }
+
+    private void scheduleDrop(float interval) {
+        if (dropTask != null) dropTask.cancel();
+
+        dropTask = new Timer.Task() {
             @Override
             public void run() {
                 if (isAnimating) return;
@@ -107,7 +103,9 @@ public class GameScreen implements Screen {
                     generateNewFallingColumn();
                 }
             }
-        }, 0.5f, 0.5f);
+        };
+
+        Timer.schedule(dropTask, 0, interval);
     }
 
     private void generateNewFallingColumn() {
@@ -117,9 +115,7 @@ public class GameScreen implements Screen {
         animationProgress = 0f;
         visualFallingY = fallingRow;
 
-        for (int i = 0; i < 3; i++) {
-            nextColors[i] = random.nextInt(4);
-        }
+        for (int i = 0; i < 3; i++) nextColors[i] = random.nextInt(4);
     }
 
     private boolean canRise() {
@@ -127,6 +123,16 @@ public class GameScreen implements Screen {
             grid[fallingRow - 1][fallingCol] == -1 &&
             grid[fallingRow - 2][fallingCol] == -1 &&
             grid[fallingRow - 3][fallingCol] == -1;
+    }
+
+    private boolean canMove(int dir) {
+        int newCol = fallingCol + dir;
+        if (newCol < 0 || newCol >= COLS) return false;
+        for (int i = 0; i < 3; i++) {
+            int row = fallingRow - i;
+            if (row >= 0 && grid[row][newCol] != -1) return false;
+        }
+        return true;
     }
 
     @Override
@@ -145,15 +151,12 @@ public class GameScreen implements Screen {
             visualFallingY = fallingRow;
         }
 
-        Iterator<Particle> iterator = particles.iterator();
-        while (iterator.hasNext()) {
-            Particle p = iterator.next();
+        particles.removeIf(p -> {
             p.update(delta);
-            if (p.life <= 0) iterator.remove();
-        }
+            return p.life <= 0;
+        });
 
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
-
         for (int row = 0; row < ROWS; row++) {
             for (int col = 0; col < COLS; col++) {
                 shapeRenderer.setColor(0.15f, 0.15f, 0.2f, 1);
@@ -171,9 +174,8 @@ public class GameScreen implements Screen {
         }
 
         for (int i = 0; i < 3; i++) {
-            int rowOffset = i;
-            float drawY = (visualFallingY - rowOffset) * CELL_SIZE;
-            if (fallingRow - rowOffset >= 0) {
+            float drawY = (visualFallingY - i) * CELL_SIZE;
+            if (fallingRow - i >= 0) {
                 draw3DBlock(gridOffsetX + fallingCol * CELL_SIZE, gridOffsetY + drawY, getColor(fallingColors[i]));
             }
         }
@@ -185,7 +187,6 @@ public class GameScreen implements Screen {
 
         float previewX = gridOffsetX + COLS * CELL_SIZE + 40;
         float nextBlockY = gridOffsetY + (ROWS - 2) * CELL_SIZE;
-        float nextLabelY = nextBlockY + CELL_SIZE - 6f;
         String nextText = "Next:";
         GlyphLayout layout = new GlyphLayout(font, nextText);
         float textX = previewX + CELL_SIZE / 2f - layout.width / 2f;
@@ -193,9 +194,10 @@ public class GameScreen implements Screen {
         float textY = topRowY + layout.height / 2f;
 
         for (int i = 0; i < 3; i++) {
-            float y = nextBlockY - i * (CELL_SIZE);
+            float y = nextBlockY - i * CELL_SIZE;
             draw3DBlock(previewX, y, getColor(nextColors[i]));
         }
+
         shapeRenderer.end();
 
         batch.begin();
@@ -266,6 +268,40 @@ public class GameScreen implements Screen {
         }
     }
 
+    @Override
+    public boolean keyDown(int keycode) {
+        if (keycode == Input.Keys.LEFT && canMove(-1)) {
+            fallingCol--;
+        } else if (keycode == Input.Keys.RIGHT && canMove(1)) {
+            fallingCol++;
+        } else if (keycode == Input.Keys.DOWN) {
+            scheduleDrop(0.05f); // ускорено падане
+        } else if (keycode == Input.Keys.UP) {
+            // Завъртане на камъните
+            int top = fallingColors[0];
+            fallingColors[0] = fallingColors[1];
+            fallingColors[1] = fallingColors[2];
+            fallingColors[2] = top;
+        }
+        return true;
+    }
+
+
+    @Override public boolean keyUp(int keycode) {
+        if (keycode == Input.Keys.DOWN) {
+            scheduleDrop(1.5f); // обратно към нормално падане
+        }
+        return true;
+    }
+
+    @Override public boolean keyTyped(char character) { return false; }
+    @Override public boolean touchDown(int screenX, int screenY, int pointer, int button) { return false; }
+    @Override public boolean touchUp(int screenX, int screenY, int pointer, int button) { return false; }
+    @Override public boolean touchDragged(int screenX, int screenY, int pointer) { return false; }
+    @Override public boolean touchCancelled(int screenX, int screenY, int pointer, int button) { return false; }
+    @Override public boolean mouseMoved(int screenX, int screenY) { return false; }
+    @Override public boolean scrolled(float amountX, float amountY) { return false; }
+
     @Override public void resize(int width, int height) {}
     @Override public void pause() {}
     @Override public void resume() {}
@@ -274,6 +310,7 @@ public class GameScreen implements Screen {
         shapeRenderer.dispose();
         font.dispose();
         batch.dispose();
+        if (dropTask != null) dropTask.cancel();
     }
 
     private static class Particle {
