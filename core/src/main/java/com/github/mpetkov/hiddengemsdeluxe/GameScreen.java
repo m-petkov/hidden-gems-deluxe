@@ -39,6 +39,9 @@ public class GameScreen implements Screen, InputProcessor {
         return Math.max(MIN_DROP_INTERVAL, 1.5f - (level - 1) * 0.05f);
     }
 
+    private boolean isGameOver = false;
+    private float gameOverTimer = 0f;
+
     private final Main game;
     private ShapeRenderer shapeRenderer;
     private BitmapFont font;
@@ -122,10 +125,12 @@ public class GameScreen implements Screen, InputProcessor {
         random = new Random();
         for (int i = 0; i < 3; i++) nextColors[i] = random.nextInt(4);
 
-        generateNewFallingColumn();
-
         grid = new int[ROWS][COLS];
         for (int[] row : grid) Arrays.fill(row, -1);
+
+        generateNewFallingColumn();
+
+
 
         scheduleDrop(1.5f); // забавено тройно
     }
@@ -300,6 +305,12 @@ public class GameScreen implements Screen, InputProcessor {
         // Ако има, checkAndRemoveMatches ще се погрижи да извика пак processMatches() след 0.5 секунди
     }
 
+    private void triggerGameOver() {
+        isGameOver = true;
+        gameOverTimer = 3f;
+        if (dropTask != null) dropTask.cancel(); // спри падащия таймер
+    }
+
 
 
 
@@ -310,7 +321,18 @@ public class GameScreen implements Screen, InputProcessor {
         animationProgress = 0f;
         visualFallingY = fallingRow;
 
-        for (int i = 0; i < 3; i++) nextColors[i] = random.nextInt(4);
+        for (int i = 0; i < 3; i++) {
+            nextColors[i] = random.nextInt(4);
+        }
+
+        // Проверка дали мястото за новата колона е заето (Game Over)
+        for (int i = 0; i < 3; i++) {
+            int row = fallingRow - i;
+            if (row >= 0 && grid[row][fallingCol] != -1) {
+                triggerGameOver();
+                return;
+            }
+        }
     }
 
     private boolean canRise() {
@@ -471,6 +493,40 @@ public class GameScreen implements Screen, InputProcessor {
             font.draw(batch, levelText, levelTextX, levelTextY);
 
             font.getData().setScale(1f); // възстанови нормалния мащаб
+        }
+
+        if (isGameOver) {
+            gameOverTimer -= delta;
+
+            String gameOverText = "GAME OVER!";
+            float alpha = Math.min(1f, gameOverTimer);
+            float scale = 1f + 0.3f * (float)Math.sin((3f - gameOverTimer) * Math.PI);
+
+            font.getData().setScale(scale);
+            GlyphLayout gameOverLayout = new GlyphLayout(font, gameOverText);
+
+            float centerX = gridOffsetX + (COLS * CELL_SIZE - gameOverLayout.width) / 2f;
+            float centerY = gridOffsetY + (ROWS * CELL_SIZE + gameOverLayout.height) / 2f;
+
+            font.setColor(1f, 0.4f, 0.4f, alpha);
+            font.draw(batch, gameOverText, centerX, centerY);
+
+            font.getData().setScale(1f);
+
+            if (gameOverTimer <= 0f) {
+                game.setScreen(new WelcomeScreen(game));
+
+                // Отложи dispose() с 0.1 секунди, за да избегнеш конфликт с текущия render()
+                Timer.schedule(new Timer.Task() {
+                    @Override
+                    public void run() {
+                        dispose();
+                    }
+                }, 0.1f);
+            }
+
+            batch.end();
+            return; // спри допълнително рендериране
         }
 
         batch.end();
