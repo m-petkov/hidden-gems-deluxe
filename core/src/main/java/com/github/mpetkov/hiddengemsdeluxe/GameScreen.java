@@ -35,6 +35,10 @@ public class GameScreen implements Screen, InputProcessor {
         }
     }
 
+    private float getDropIntervalForLevel(int level) {
+        return Math.max(MIN_DROP_INTERVAL, 1.5f - (level - 1) * 0.05f);
+    }
+
     private final Main game;
     private ShapeRenderer shapeRenderer;
     private BitmapFont font;
@@ -69,8 +73,27 @@ public class GameScreen implements Screen, InputProcessor {
 
     private float currentDropInterval = 1.5f;
 
+    private int level = 1;
+    private float levelUpTimer = 0f;
+    private static final float MIN_DROP_INTERVAL = 0.05f;
+
     public GameScreen(Main game) {
         this.game = game;
+    }
+
+    private void checkLevelUp() {
+        int newLevel = score / 20 + 1;
+        if (newLevel > level) {
+            level = newLevel;
+
+            float interval = getDropIntervalForLevel(level);
+            if (interval < currentDropInterval) {
+                currentDropInterval = interval;
+                scheduleDrop(currentDropInterval);
+            }
+
+            levelUpTimer = 2f;
+        }
     }
 
     @Override
@@ -205,6 +228,7 @@ public class GameScreen implements Screen, InputProcessor {
                     matchMarkers.add(new MatchMarker(col, row, c));
                     anyRemoved = true;
                     score++; // ⬅ Добавяне на 1 точка за всеки премахнат блок
+                    checkLevelUp();
                 }
             }
         }
@@ -416,6 +440,39 @@ public class GameScreen implements Screen, InputProcessor {
         font.draw(batch, scoreText, scoreX, scoreY);
         font.draw(batch, speedText, speedX, speedY);
 
+        String levelDisplayText = "Level: " + level;
+        GlyphLayout levelLayout = new GlyphLayout(font, levelDisplayText);
+        float levelX = speedX + speedLayout.width - levelLayout.width;
+        float levelY = speedY - speedLayout.height - 10;
+
+        font.setColor(0, 0, 0, 0.5f);
+        font.draw(batch, levelDisplayText, levelX + 1, levelY - 1);
+        font.setColor(Color.ORANGE);
+        font.draw(batch, levelDisplayText, levelX, levelY);
+
+        if (levelUpTimer > 0f) {
+            levelUpTimer -= delta;
+
+            String levelText = "LEVEL UP!";
+
+            float alpha = Math.min(1f, levelUpTimer); // Избледняване
+            float scale = 1f + 0.3f * (float)Math.sin((2f - levelUpTimer) * Math.PI); // Пулсиране
+
+            font.getData().setScale(scale);
+            GlyphLayout levelUpLayout = new GlyphLayout(font, levelText);
+
+            float gridCenterX = gridOffsetX + (COLS * CELL_SIZE) / 2f;
+            float gridCenterY = gridOffsetY + (ROWS * CELL_SIZE) / 2f;
+
+            float levelTextX = gridCenterX - levelUpLayout.width / 2f;
+            float levelTextY = gridCenterY + levelUpLayout.height / 2f;
+
+            font.setColor(1f, 0.8f, 0.2f, alpha);
+            font.draw(batch, levelText, levelTextX, levelTextY);
+
+            font.getData().setScale(1f); // възстанови нормалния мащаб
+        }
+
         batch.end();
 
         shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
@@ -498,9 +555,10 @@ public class GameScreen implements Screen, InputProcessor {
     }
 
 
-    @Override public boolean keyUp(int keycode) {
+    @Override
+    public boolean keyUp(int keycode) {
         if (keycode == Input.Keys.DOWN) {
-            scheduleDrop(1.5f); // обратно към нормално падане
+            scheduleDrop(getDropIntervalForLevel(level)); // връщаме скоростта за текущото ниво
         }
         return true;
     }
