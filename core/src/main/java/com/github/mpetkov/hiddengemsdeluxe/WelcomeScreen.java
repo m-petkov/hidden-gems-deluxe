@@ -2,25 +2,25 @@ package com.github.mpetkov.hiddengemsdeluxe;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
+import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
-import com.badlogic.gdx.graphics.Color;
-import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
+import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.*;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
-import com.badlogic.gdx.scenes.scene2d.InputEvent;
 
 public class WelcomeScreen implements Screen {
 
     private final Main game;
     private Stage stage;
     private Skin skin;
-    private Texture background;
+    private TextButton resumeButton;
 
     public WelcomeScreen(Main game) {
         this.game = game;
@@ -31,7 +31,7 @@ public class WelcomeScreen implements Screen {
         stage = new Stage(new ScreenViewport());
         Gdx.input.setInputProcessor(stage);
 
-        // Зареждане на шрифт от файл
+        // Шрифт
         FreeTypeFontGenerator generator = new FreeTypeFontGenerator(Gdx.files.internal("fonts/Play-Regular.ttf"));
         FreeTypeFontGenerator.FreeTypeFontParameter fontParameter = new FreeTypeFontGenerator.FreeTypeFontParameter();
         fontParameter.size = 32;
@@ -43,7 +43,7 @@ public class WelcomeScreen implements Screen {
         skin = new Skin();
         skin.add("default-font", customFont);
 
-        // Бутони стил
+        // Стил за бутон
         TextButton.TextButtonStyle orangeButtonStyle = new TextButton.TextButtonStyle();
         orangeButtonStyle.font = customFont;
         orangeButtonStyle.fontColor = Color.ORANGE;
@@ -51,7 +51,7 @@ public class WelcomeScreen implements Screen {
         orangeButtonStyle.down = createRoundedRectDrawable(300, 60, 12, Color.GRAY);
         skin.add("orange", orangeButtonStyle);
 
-        // Таблица
+        // Таблица за подреждане
         Table table = new Table();
         table.setFillParent(true);
         stage.addActor(table);
@@ -60,7 +60,20 @@ public class WelcomeScreen implements Screen {
         Label.LabelStyle titleStyle = new Label.LabelStyle(customFont, Color.GOLD);
         Label title = new Label("Hidden Gems Deluxe", titleStyle);
 
-        // Start бутон
+        // Resume Game (само ако има активна пауза)
+        resumeButton = new TextButton("Resume Game", skin, "orange");
+        resumeButton.setDisabled(!game.isPaused);
+        resumeButton.setVisible(game.isPaused);
+        resumeButton.addListener(new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                if (!resumeButton.isDisabled()) {
+                    game.resumeGame();
+                }
+            }
+        });
+
+        // Start Game
         TextButton startButton = new TextButton("Start Game", skin, "orange");
         startButton.addListener(new ClickListener() {
             @Override
@@ -69,18 +82,23 @@ public class WelcomeScreen implements Screen {
             }
         });
 
-        // Exit бутон
+        // Exit
         TextButton exitButton = new TextButton("Exit", skin, "orange");
         exitButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
-                Gdx.app.exit(); // Затваря играта
+                Gdx.app.exit();
             }
         });
 
-        // Добавяне към таблицата
+        // Подреждане в таблицата
         table.top().padTop(100);
         table.add(title).padBottom(60).row();
+
+        if (game.isPaused) {
+            table.add(resumeButton).width(300).height(60).padBottom(20).row();
+        }
+
         table.add(startButton).width(300).height(60).padBottom(20).row();
         table.add(exitButton).width(300).height(60);
     }
@@ -93,8 +111,7 @@ public class WelcomeScreen implements Screen {
         stage.draw();
     }
 
-    @Override
-    public void resize(int width, int height) {
+    @Override public void resize(int width, int height) {
         stage.getViewport().update(width, height, true);
     }
 

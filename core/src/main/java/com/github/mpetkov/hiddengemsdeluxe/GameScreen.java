@@ -80,6 +80,8 @@ public class GameScreen implements Screen, InputProcessor {
     private float levelUpTimer = 0f;
     private static final float MIN_DROP_INTERVAL = 0.05f;
 
+    private boolean wasInitialized = false;
+
     public GameScreen(Main game) {
         this.game = game;
     }
@@ -101,6 +103,10 @@ public class GameScreen implements Screen, InputProcessor {
 
     @Override
     public void show() {
+        Gdx.input.setInputProcessor(this); // <-- винаги!
+
+        if (wasInitialized) return;
+        wasInitialized = true;
         shapeRenderer = new ShapeRenderer();
         batch = new SpriteBatch();
         Gdx.input.setInputProcessor(this);
@@ -606,7 +612,11 @@ public class GameScreen implements Screen, InputProcessor {
             fallingColors[0] = fallingColors[1];
             fallingColors[1] = fallingColors[2];
             fallingColors[2] = top;
+        } else if (keycode == Input.Keys.ENTER) {
+            game.pauseGame(this); // Вместо директно да сетваме WelcomeScreen
         }
+
+
         return true;
     }
 
