@@ -101,12 +101,114 @@ public class GameScreen implements Screen, InputProcessor {
                         }
                     }
                     generateNewFallingColumn();
+                    processMatches();
                 }
             }
         };
 
         Timer.schedule(dropTask, 0, interval);
     }
+
+    private boolean checkAndRemoveMatches() {
+        boolean[][] toRemove = new boolean[ROWS][COLS];
+        boolean anyRemoved = false;
+
+        // Хоризонтално
+        for (int row = 0; row < ROWS; row++) {
+            for (int col = 0; col <= COLS - 3; col++) {
+                int color = grid[row][col];
+                if (color != -1 &&
+                    color == grid[row][col + 1] &&
+                    color == grid[row][col + 2]) {
+                    toRemove[row][col] = true;
+                    toRemove[row][col + 1] = true;
+                    toRemove[row][col + 2] = true;
+                }
+            }
+        }
+
+        // Вертикално
+        for (int col = 0; col < COLS; col++) {
+            for (int row = 0; row <= ROWS - 3; row++) {
+                int color = grid[row][col];
+                if (color != -1 &&
+                    color == grid[row + 1][col] &&
+                    color == grid[row + 2][col]) {
+                    toRemove[row][col] = true;
+                    toRemove[row + 1][col] = true;
+                    toRemove[row + 2][col] = true;
+                }
+            }
+        }
+
+        // Диагонали ↘
+        for (int row = 0; row <= ROWS - 3; row++) {
+            for (int col = 0; col <= COLS - 3; col++) {
+                int color = grid[row][col];
+                if (color != -1 &&
+                    color == grid[row + 1][col + 1] &&
+                    color == grid[row + 2][col + 2]) {
+                    toRemove[row][col] = true;
+                    toRemove[row + 1][col + 1] = true;
+                    toRemove[row + 2][col + 2] = true;
+                }
+            }
+        }
+
+        // Диагонали ↙
+        for (int row = 0; row <= ROWS - 3; row++) {
+            for (int col = 2; col < COLS; col++) {
+                int color = grid[row][col];
+                if (color != -1 &&
+                    color == grid[row + 1][col - 1] &&
+                    color == grid[row + 2][col - 2]) {
+                    toRemove[row][col] = true;
+                    toRemove[row + 1][col - 1] = true;
+                    toRemove[row + 2][col - 2] = true;
+                }
+            }
+        }
+
+        for (int row = 0; row < ROWS; row++) {
+            for (int col = 0; col < COLS; col++) {
+                if (toRemove[row][col]) {
+                    addParticles(col, row, getColor(grid[row][col]));
+                    grid[row][col] = -1;
+                    anyRemoved = true;
+                }
+            }
+        }
+
+        return anyRemoved;
+    }
+
+    private void applyGravity() {
+        for (int col = 0; col < COLS; col++) {
+            for (int row = 1; row < ROWS; row++) {
+                if (grid[row][col] != -1 && grid[row - 1][col] == -1) {
+                    int currentRow = row;
+                    while (currentRow > 0 && grid[currentRow - 1][col] == -1) {
+                        grid[currentRow - 1][col] = grid[currentRow][col];
+                        grid[currentRow][col] = -1;
+                        currentRow--;
+                    }
+                }
+            }
+        }
+    }
+
+    private void processMatches() {
+        boolean found;
+        do {
+            found = checkAndRemoveMatches();
+            if (found) {
+                applyGravity();
+            }
+        } while (found);
+    }
+
+
+
 
     private void generateNewFallingColumn() {
         System.arraycopy(nextColors, 0, fallingColors, 0, 3);
