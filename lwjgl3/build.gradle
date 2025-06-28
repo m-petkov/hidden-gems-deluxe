@@ -189,3 +189,20 @@ startScripts.classpath = project.tasks.jar.outputs.files
 if(enableGraalNative == 'true') {
   apply from: file("nativeimage.gradle")
 }
+
+
+tasks.register('fatJar', Jar) {
+  group = 'build'
+  archiveClassifier.set('all')
+
+  duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+  manifest {
+    attributes 'Main-Class': 'com.github.mpetkov.hiddengemsdeluxe.lwjgl3.Lwjgl3Launcher'
+  }
+
+  from {
+    configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+  }
+
+  with jar
+}
