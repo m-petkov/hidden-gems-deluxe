@@ -18,7 +18,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-
 public class GameScreen implements Screen, InputProcessor {
 
     private final Main game;
@@ -48,7 +47,7 @@ public class GameScreen implements Screen, InputProcessor {
     private int score;
     private float currentDropInterval;
     private int level;
-    private float levelUpTimer; // Времето, през което надписът "LEVEL UP!" е видим
+    private float levelUpTimer;
 
     private boolean isGameOver;
     private float gameOverTimer;
@@ -59,43 +58,28 @@ public class GameScreen implements Screen, InputProcessor {
 
     private boolean isHardDropping = false;
 
+    private float hardDropCooldown = 0f;
+
     public GameScreen(Main game) {
         this.game = game;
     }
 
-    // Метод за изчисляване на интервала на падане въз основа на нивото
     private float getDropIntervalForLevel(int level) {
-        // Базова скорост: 1.5 секунди
-        // Намалява с 0.10 секунди на всеки левел
-        // Пример: Level 1: 1.5s, Level 2: 1.4s, Level 3: 1.3s
-
-        // Определяме ефективното ниво за изчисление на скоростта
-        // Ако нивото е над 12, използваме 12 за изчисление, за да спре засилването.
         int effectiveLevel = Math.min(level, 12);
-
-        // Изчисляваме скоростта на базата на ефективното ниво
         float calculatedInterval = 1.5f - (effectiveLevel - 1) * 0.10f;
-
-        // Гарантираме, че интервалът не става по-малък от MIN_DROP_INTERVAL
         return Math.max(GameConstants.MIN_DROP_INTERVAL, calculatedInterval);
     }
 
-    // Метод за проверка и преминаване на ниво
     private void checkLevelUp() {
-        // Нов левел на всеки 10 точки (пример: 0-9 точки -> Level 1, 10-19 точки -> Level 2 и т.н.)
-        int newLevel = (score / 10) + 1; // Коригирано деление
+        int newLevel = (score / 10) + 1;
         if (newLevel > level) {
             level = newLevel;
-
-            // Актуализираме интервала на падане за новото ниво
             float interval = getDropIntervalForLevel(level);
-            if (interval < currentDropInterval) { // Проверяваме дали новият интервал е по-бърз
+            if (interval < currentDropInterval) {
                 currentDropInterval = interval;
-                scheduleDrop(currentDropInterval); // Пренасрочваме падането с новия интервал
+                scheduleDrop(currentDropInterval);
             }
-
-            // Активираме таймера за показване на "LEVEL UP!"
-            levelUpTimer = 2f; // Показва се за 2 секунди
+            levelUpTimer = 2f;
         }
     }
 
@@ -137,15 +121,13 @@ public class GameScreen implements Screen, InputProcessor {
 
         generateNewFallingColumn();
 
-        // Инициализираме началното ниво и интервал на падане
-        level = 1; // Започваме от ниво 1
-        currentDropInterval = getDropIntervalForLevel(level); // Вземаме интервала за ниво 1
-        scheduleDrop(currentDropInterval); // Започваме падането с правилния интервал
+        level = 1;
+        currentDropInterval = getDropIntervalForLevel(level);
+        scheduleDrop(currentDropInterval);
     }
 
     private void scheduleDrop(float interval) {
-        currentDropInterval = interval; // Актуализирайте и currentDropInterval
-
+        currentDropInterval = interval;
         if (dropTask != null) dropTask.cancel();
 
         dropTask = new Timer.Task() {
@@ -176,7 +158,6 @@ public class GameScreen implements Screen, InputProcessor {
 
     private void processMatches() {
         if (isProcessingMatches) return;
-
         isProcessingMatches = true;
 
         boolean[][] toRemove = gridManager.findMatches();
@@ -188,8 +169,8 @@ public class GameScreen implements Screen, InputProcessor {
                     Color c = ColorMapper.getColor(gridManager.getGridCell(row, col));
                     matchMarkers.add(new MatchMarker(col, row, c));
                     anyRemoved = true;
-                    score++; // Увеличи резултата
-                    checkLevelUp(); // Провери за ново ниво след всяка точка
+                    score++;
+                    checkLevelUp();
                 }
             }
         }
@@ -235,8 +216,6 @@ public class GameScreen implements Screen, InputProcessor {
         fallingBlock.generateNewBlock(random);
         for (int i = 0; i < 3; i++) {
             int row = fallingBlock.getFallingRow() - i;
-            // Проверяваме дали най-горния блок на новата фигура се застъпва с нещо
-            // на реда на падане. Ако да, това означава Game Over.
             if (row >= 0 && row < GameConstants.ROWS && gridManager.getGridCell(row, fallingBlock.getFallingCol()) != -1) {
                 triggerGameOver();
                 return;
@@ -254,8 +233,18 @@ public class GameScreen implements Screen, InputProcessor {
         background.update(delta);
         background.render(shapeRenderer);
 
+        hardDropCooldown -= delta;
+        if (!isAnimating && !isProcessingMatches && !isGameOver &&
+            Gdx.input.isKeyPressed(Input.Keys.DOWN) && hardDropCooldown <= 0f) {
+
+            isHardDropping = true;
+            animationProgress = 0f;
+            isAnimating = true;
+            hardDropCooldown = 0.2f; // 200 милисекунди между хард падове
+        }
+
         if (isAnimating) {
-            float speed = isHardDropping ? 20f : 5f; // ускорено при hard drop
+            float speed = isHardDropping ? 20f : 5f;
             animationProgress += delta * speed;
 
             if (animationProgress >= 1f) {
@@ -269,8 +258,6 @@ public class GameScreen implements Screen, InputProcessor {
                         isAnimating = true;
                     } else {
                         isHardDropping = false;
-
-                        // Закотвяме блоковете в мрежата
                         for (int i = 0; i < 3; i++) {
                             int row = fallingBlock.getFallingRow() - i;
                             int col = fallingBlock.getFallingCol();
@@ -308,10 +295,9 @@ public class GameScreen implements Screen, InputProcessor {
             score, level, currentDropInterval,
             levelUpTimer, isGameOver, gameOverTimer);
 
-        // Актуализираме таймера за "LEVEL UP!"
         if (levelUpTimer > 0) {
             levelUpTimer -= delta;
-            if (levelUpTimer < 0) levelUpTimer = 0; // Гарантираме, че не става отрицателен
+            if (levelUpTimer < 0) levelUpTimer = 0;
         }
 
         if (isGameOver) {
@@ -367,12 +353,6 @@ public class GameScreen implements Screen, InputProcessor {
             fallingBlock.moveHorizontal(-1);
         } else if (keycode == Input.Keys.RIGHT && fallingBlock.canMove(1)) {
             fallingBlock.moveHorizontal(1);
-        } else if (keycode == Input.Keys.DOWN) {
-            if (!isAnimating && !isProcessingMatches && !isGameOver) {
-                isHardDropping = true;
-                animationProgress = 0f;
-                isAnimating = true;
-            }
         } else if (keycode == Input.Keys.UP) {
             fallingBlock.rotateBlock();
         } else if (keycode == Input.Keys.ENTER || keycode == Input.Keys.ESCAPE) {
@@ -384,7 +364,6 @@ public class GameScreen implements Screen, InputProcessor {
     @Override
     public boolean keyUp(int keycode) {
         if (keycode == Input.Keys.DOWN) {
-            // Връщаме нормалната скорост на падане, базирана на текущото ниво
             scheduleDrop(getDropIntervalForLevel(level));
         }
         return true;
