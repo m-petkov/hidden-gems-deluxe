@@ -10,6 +10,5 @@ public final class GameConstants {
     public static final int COLS = 6;
 
     public static final float MIN_DROP_INTERVAL = 0.05f;
-    public static final float FAST_DROP_INTERVAL = 0.05f;
     public static final float MATCH_PROCESS_DELAY = 0.8f;
 }
