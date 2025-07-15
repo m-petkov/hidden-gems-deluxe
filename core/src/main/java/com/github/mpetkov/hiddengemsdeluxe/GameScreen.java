@@ -57,6 +57,8 @@ public class GameScreen implements Screen, InputProcessor {
 
     private AnimatedBackground background;
 
+    private boolean isHardDropping = false;
+
     public GameScreen(Main game) {
         this.game = game;
     }
@@ -253,11 +255,37 @@ public class GameScreen implements Screen, InputProcessor {
         background.render(shapeRenderer);
 
         if (isAnimating) {
-            animationProgress += delta * 5f;
+            float speed = isHardDropping ? 20f : 5f; // ускорено при hard drop
+            animationProgress += delta * speed;
+
             if (animationProgress >= 1f) {
                 animationProgress = 1f;
                 isAnimating = false;
+
+                if (isHardDropping) {
+                    if (fallingBlock.canRise()) {
+                        fallingBlock.moveDown();
+                        animationProgress = 0f;
+                        isAnimating = true;
+                    } else {
+                        isHardDropping = false;
+
+                        // Закотвяме блоковете в мрежата
+                        for (int i = 0; i < 3; i++) {
+                            int row = fallingBlock.getFallingRow() - i;
+                            int col = fallingBlock.getFallingCol();
+                            if (row >= 0 && row < GameConstants.ROWS) {
+                                gridManager.setGridCell(row, col, fallingBlock.getFallingColors()[i]);
+                                addParticles(col, row, ColorMapper.getColor(fallingBlock.getFallingColors()[i]));
+                            }
+                        }
+
+                        generateNewFallingColumn();
+                        processMatches();
+                    }
+                }
             }
+
             visualFallingY = fallingBlock.getFallingRow() + 1 - animationProgress;
         } else {
             visualFallingY = fallingBlock.getFallingRow();
@@ -340,10 +368,14 @@ public class GameScreen implements Screen, InputProcessor {
         } else if (keycode == Input.Keys.RIGHT && fallingBlock.canMove(1)) {
             fallingBlock.moveHorizontal(1);
         } else if (keycode == Input.Keys.DOWN) {
-            scheduleDrop(GameConstants.FAST_DROP_INTERVAL);
+            if (!isAnimating && !isProcessingMatches && !isGameOver) {
+                isHardDropping = true;
+                animationProgress = 0f;
+                isAnimating = true;
+            }
         } else if (keycode == Input.Keys.UP) {
             fallingBlock.rotateBlock();
-        } else if (keycode == Input.Keys.ENTER) {
+        } else if (keycode == Input.Keys.ENTER || keycode == Input.Keys.ESCAPE) {
             game.pauseGame(this);
         }
         return true;

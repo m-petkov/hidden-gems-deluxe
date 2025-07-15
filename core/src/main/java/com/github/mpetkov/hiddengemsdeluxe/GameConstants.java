@@ -6,7 +6,7 @@ public final class GameConstants {
         // Приватен конструктор, за да предотврати инстанциране
     }
 
-    public static final int ROWS = 12;
+    public static final int ROWS = 15;
     public static final int COLS = 6;
 
     public static final float MIN_DROP_INTERVAL = 0.05f;
