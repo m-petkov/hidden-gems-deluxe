@@ -93,24 +93,22 @@ public class GameScreen implements Screen, InputProcessor {
         shapeRenderer = new ShapeRenderer();
         batch = new SpriteBatch();
 
+        // ✅ КОРЕКЦИЯ 1: Инициализация на GameRenderer (зареждане на текстурата)
+        GameRenderer.initialize();
+
         background = new AnimatedBackground(100);
 
-        // === КОРИГИРАНО ИЗЧИСЛЯВАНЕ НА ПОЗИЦИЯТА (за перфектно центриране) ===
+        // === ИЗЧИСЛЯВАНЕ НА ПОЗИЦИЯТА ===
         final int PADDING = 20;
 
-        // 1. Изчисляваме CELL_SIZE, като осигуряваме, че има място за PADDING отгоре и отдолу.
         CELL_SIZE = (Gdx.graphics.getHeight() - 2 * PADDING) / GameConstants.ROWS;
 
-        // 2. Изчисляваме всички размери на компонентите
         int sidePanelWidth = CELL_SIZE * 2;
         int gridWidth = GameConstants.COLS * CELL_SIZE;
         int gridHeight = GameConstants.ROWS * CELL_SIZE;
         int totalGameWidth = gridWidth + sidePanelWidth;
 
-        // 3. Вертикално Центриране: Вземаме цялото свободно вертикално пространство и го делим на две.
         gridOffsetY = (Gdx.graphics.getHeight() - gridHeight) / 2;
-
-        // 4. Хоризонтално Центриране: Изваждаме общата ширина на игралната зона и делим на две.
         gridOffsetX = (Gdx.graphics.getWidth() - totalGameWidth) / 2;
 
         // ===========================================
@@ -335,13 +333,9 @@ public class GameScreen implements Screen, InputProcessor {
             font.getData().setScale(1f);
 
             if (gameOverTimer <= 0f) {
+                // ✅ КОРЕКЦИЯ 2: Извикваме dispose преди да сменим екрана
+                dispose();
                 game.setScreen(new WelcomeScreen(game));
-                Timer.schedule(new Timer.Task() {
-                    @Override
-                    public void run() {
-                        dispose();
-                    }
-                }, 0.1f);
             }
             return;
         }
@@ -396,10 +390,15 @@ public class GameScreen implements Screen, InputProcessor {
     @Override public void pause() {}
     @Override public void resume() {}
     @Override public void hide() {}
-    @Override public void dispose() {
+
+    @Override
+    public void dispose() {
         shapeRenderer.dispose();
         font.dispose();
         batch.dispose();
         if (dropTask != null) dropTask.cancel();
+
+        // ✅ КОРЕКЦИЯ 3: Освобождаване на ресурса на GameRenderer (текстурата)
+        GameRenderer.dispose();
     }
 }

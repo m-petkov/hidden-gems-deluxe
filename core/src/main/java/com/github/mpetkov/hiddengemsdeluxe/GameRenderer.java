@@ -2,6 +2,7 @@ package com.github.mpetkov.hiddengemsdeluxe;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.GlyphLayout;
@@ -15,8 +16,46 @@ public class GameRenderer {
     // 🔹 За анимацията на неоновия контур
     private static float neonTime = 0f;
 
+    // 💡 Текстура за блоковете
+    private static Texture blockTexture;
+
     private GameRenderer() {
         // Приватен конструктор за статичен клас
+    }
+
+    // 💡 МЕТОД: Зареждане на ресурса
+    public static void initialize() {
+        try {
+            if (blockTexture == null) {
+                // Търси block.png директно в assets/
+                blockTexture = new Texture(Gdx.files.internal("block.png"));
+                Gdx.app.log("GameRenderer", "block.png заредена успешно.");
+            }
+        } catch (Exception e) {
+            Gdx.app.error("GameRenderer", "Грешка при зареждане на block.png. Уверете се, че файлът е в 'assets/': " + e.getMessage());
+        }
+    }
+
+    // 💡 МЕТОД: Освобождаване на ресурса
+    public static void dispose() {
+        if (blockTexture != null) {
+            blockTexture.dispose();
+        }
+    }
+
+    // 💡 АКТУАЛИЗИРАН МЕТОД: Рисува блока с текстура, прилагайки цветен филтър (tint)
+    // Този метод отново се казва drawBlock, както в началото.
+    private static void drawBlock(SpriteBatch batch, float x, float y, int CELL_SIZE, Color baseColor) {
+        if (blockTexture == null) return;
+
+        // Прилагаме филтър (tint) с базовия цвят
+        batch.setColor(baseColor);
+
+        // Рисуваме текстурата
+        batch.draw(blockTexture, x, y, CELL_SIZE, CELL_SIZE);
+
+        // ВАЖНО: Връщаме цвета на batch към бяло
+        batch.setColor(Color.WHITE);
     }
 
     public static void renderGame(ShapeRenderer shapeRenderer, SpriteBatch batch, BitmapFont font,
@@ -27,22 +66,17 @@ public class GameRenderer {
                                   float levelUpTimer, boolean isGameOver, float gameOverTimer) {
 
         // === Обновяване на неоновите настройки ===
-        neonTime += Gdx.graphics.getDeltaTime() * 1.5f; // Скорост на въртене
-        float pulse = 0.5f + 0.5f * MathUtils.sin(neonTime * 2f); // пулсация на яркостта
+        neonTime += Gdx.graphics.getDeltaTime() * 1.5f;
 
-        // Променяме оттенъка за по-ярък, класически неонов ефект (Синьо-Лилаво-Розово)
-        // Hue се движи между 0.5 (Cyan/Blue), 0.8 (Purple/Magenta), 0.0 (Pink/Red)
-        float hueCenter = 0.65f; // Център на Синьо-Лилаво
-        float hueAmplitude = 0.3f; // Голяма амплитуда, за да обхване Розово
-
-        // Бавната промяна на Hue за преливане между базовите цветове
+        float hueCenter = 0.65f;
+        float hueAmplitude = 0.3f;
         float newHue = (hueCenter + hueAmplitude * MathUtils.sin(neonTime * 0.5f)) % 1f;
         if (newHue < 0) newHue += 1f;
 
-        // Hue Shift Base все още контролира въртящата се светлинна точка
-        float hueShiftBase = (MathUtils.sin(neonTime * 1.5f) + 1f) * 0.08f;
-        Color neonBaseColor = hsvToColor(newHue, 1.0f, 1.0f); // S=1.0, V=1.0 за максимална яркост
+        Color neonBaseColor = hsvToColor(newHue, 1.0f, 1.0f);
 
+        // ----------------------------------------------------------------------------------
+        // === I. ShapeRenderer (За фон, частици, маркери) ===
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
 
         // Рисуване на фон на мрежата
@@ -53,24 +87,7 @@ public class GameRenderer {
             }
         }
 
-        // Рисуване на блоковете в мрежата
-        for (int row = 0; row < GameConstants.ROWS; row++) {
-            for (int col = 0; col < GameConstants.COLS; col++) {
-                int color = grid[row][col];
-                if (color != -1) {
-                    draw3DBlock(shapeRenderer, gridOffsetX + col * CELL_SIZE, gridOffsetY + row * CELL_SIZE, CELL_SIZE, ColorMapper.getColor(color));
-                }
-            }
-        }
-
-        // Рисуване на падащия блок
-        for (int i = 0; i < 3; i++) {
-            if (fallingBlock.getFallingRow() - i >= 0) {
-                draw3DBlock(shapeRenderer, gridOffsetX + fallingBlock.getFallingCol() * CELL_SIZE,
-                    gridOffsetY + (fallingBlock.getFallingRow() - i) * CELL_SIZE,
-                    CELL_SIZE, ColorMapper.getColor(fallingBlock.getFallingColors()[i]));
-            }
-        }
+        // **ПРЕМАХНАТО:** Тук преди бяха извиквани drawBlockBackground методите.
 
         // Рисуване на частиците
         for (Particle p : particles) {
@@ -93,18 +110,43 @@ public class GameRenderer {
             shapeRenderer.rect(x + 2, y + 2, CELL_SIZE - 4, CELL_SIZE - 4);
         }
 
-        // "Next:" блок
+        shapeRenderer.end();
+
+        // ----------------------------------------------------------------------------------
+        // === II. SpriteBatch (За БЛОКОВЕ и ТЕКСТ) ===
+        batch.begin();
+
+        // **АКТУАЛИЗИРАНО:** Извикваме drawBlock (с текстурата и tint)
+        // Рисуване на блоковете в мрежата
+        for (int row = 0; row < GameConstants.ROWS; row++) {
+            for (int col = 0; col < GameConstants.COLS; col++) {
+                int colorCode = grid[row][col];
+                if (colorCode != -1) {
+                    drawBlock(batch, gridOffsetX + col * CELL_SIZE, gridOffsetY + row * CELL_SIZE,
+                        CELL_SIZE, ColorMapper.getColor(colorCode));
+                }
+            }
+        }
+
+        // **АКТУАЛИЗИРАНО:** Рисуване на падащия блок
+        for (int i = 0; i < 3; i++) {
+            if (fallingBlock.getFallingRow() - i >= 0) {
+                drawBlock(batch, gridOffsetX + fallingBlock.getFallingCol() * CELL_SIZE,
+                    gridOffsetY + (fallingBlock.getFallingRow() - i) * CELL_SIZE,
+                    CELL_SIZE, ColorMapper.getColor(fallingBlock.getFallingColors()[i]));
+            }
+        }
+
+        // **АКТУАЛИЗИРАНО:** "Next:" блок
         float previewX = gridOffsetX + GameConstants.COLS * CELL_SIZE + 40;
         float nextBlockY = gridOffsetY + (GameConstants.ROWS - 2) * CELL_SIZE;
         for (int i = 0; i < 3; i++) {
             float y = nextBlockY - i * CELL_SIZE;
-            draw3DBlock(shapeRenderer, previewX, y, CELL_SIZE, ColorMapper.getColor(fallingBlock.getNextColors()[i]));
+            drawBlock(batch, previewX, y, CELL_SIZE, ColorMapper.getColor(fallingBlock.getNextColors()[i]));
         }
 
-        shapeRenderer.end();
 
         // === Текстова част ===
-        batch.begin();
         String nextText = "Next:";
         GlyphLayout layout = new GlyphLayout(font, nextText);
         float textX = previewX + CELL_SIZE / 2f - layout.width / 2f;
@@ -167,7 +209,10 @@ public class GameRenderer {
         }
         batch.end();
 
-        // === Рисуване на линии на мрежата (ТЪНКИ ЛИНИИ) ===
+        // ----------------------------------------------------------------------------------
+        // === III. ShapeRenderer (Линии на мрежата и Неонова рамка) ===
+
+        // Рисуване на линии на мрежата (ТЪНКИ ЛИНИИ) - Line ShapeType
         shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
         shapeRenderer.setColor(0.1f, 0.1f, 0.15f, 1);
         for (int row = 0; row <= GameConstants.ROWS; row++) {
@@ -180,11 +225,10 @@ public class GameRenderer {
 
         // ----------------------------------------------------------------------------------
 
-        // === БЛОК ЗА НЕОНОВА РАМКА: СТРОГО ПРАВОЪГЪЛЕН ШНУР С RGB ПРЕЛИВАНЕ ===
+        // === БЛОК ЗА НЕОНОВА РАМКА ===
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
 
         float borderThickness = 8f;
-        float halfThickness = borderThickness / 2f;
         float gridWidth = GameConstants.COLS * CELL_SIZE;
         float gridHeight = GameConstants.ROWS * CELL_SIZE;
 
@@ -193,30 +237,25 @@ public class GameRenderer {
         float maxX = gridOffsetX + gridWidth;
         float maxY = gridOffsetY + gridHeight;
 
-        // Брой сегменти
         final int SEGMENTS_PER_SIDE = 40;
         final int TOTAL_SEGMENTS = 4 * SEGMENTS_PER_SIDE;
 
-        // 1/160 от пълната фаза
         float phaseStep = 1f / TOTAL_SEGMENTS;
         float totalPhaseOffset = neonTime * 0.5f;
 
-        // Дължините на промяна на координатите за един сегмент (права линия)
         float dx = gridWidth / SEGMENTS_PER_SIDE;
         float dy = gridHeight / SEGMENTS_PER_SIDE;
 
 
-        // Започваме цикъла, който рисува целия правоъгълен контур
         for (int i = 0; i < TOTAL_SEGMENTS; i++) {
 
             float phase = (totalPhaseOffset + i * phaseStep) % 1f;
             Color segColor = calculateColor(phase, neonBaseColor);
             shapeRenderer.setColor(segColor);
 
-            int sectionIndex = i / SEGMENTS_PER_SIDE; // 0: Top, 1: Right, 2: Bottom, 3: Left
-            int j = i % SEGMENTS_PER_SIDE; // Индекс в рамките на страната
+            int sectionIndex = i / SEGMENTS_PER_SIDE;
+            int j = i % SEGMENTS_PER_SIDE;
 
-            // 1. ПРАВА ЛИНИЯ (Рисува се като малък правоъгълник)
             float x, y, width, height;
 
             if (sectionIndex == 0) {
@@ -233,7 +272,6 @@ public class GameRenderer {
                 height = dy;
             } else if (sectionIndex == 2) {
                 // BOTTOM (от BR към BL)
-                // Движим се надясно, за да съвпадне с посоката на анимацията
                 x = minX + (SEGMENTS_PER_SIDE - 1 - j) * dx;
                 y = minY;
                 width = dx;
@@ -246,7 +284,6 @@ public class GameRenderer {
                 height = dy;
             }
 
-            // Рисуваме правоъгълника.
             shapeRenderer.rect(x, y, width, height);
         }
 
@@ -256,38 +293,8 @@ public class GameRenderer {
 
     // 🔹 ПОМОЩЕН МЕТОД за изчисляване на цвета на база фазата
     private static Color calculateColor(float phase, Color neonBaseColor) {
-        // Интензитет: синусоида с отместване, за да не е напълно черно
         float intensity = 0.4f + 0.6f * MathUtils.sin(phase * MathUtils.PI * 2);
-
-        // Цвят: Базовият цвят се смесва с бяло за ефект на "гореща точка" и се затъмнява/изсветлява според интензитета
         return neonBaseColor.cpy().lerp(Color.WHITE, 0.4f + 0.3f * intensity).mul(intensity);
-    }
-
-    private static void draw3DBlock(ShapeRenderer shapeRenderer, float x, float y, int CELL_SIZE, Color baseColor) {
-        float padding = 6f;
-        float size = CELL_SIZE - 2 * padding;
-        float radius = size * 0.1f;
-        float left = x + padding;
-        float bottom = y + padding;
-
-        shapeRenderer.setColor(baseColor);
-        shapeRenderer.rect(left + radius, bottom + radius, size - 2 * radius, size - 2 * radius);
-
-        shapeRenderer.circle(left + radius, bottom + radius, radius);
-        shapeRenderer.circle(left + size - radius, bottom + radius, radius);
-        shapeRenderer.circle(left + radius, bottom + size - radius, radius);
-        shapeRenderer.circle(left + size - radius, bottom + size - radius, radius);
-
-        shapeRenderer.setColor(baseColor.cpy().lerp(Color.BLACK, 0.25f));
-        shapeRenderer.rect(left + size * 0.6f, bottom, size * 0.4f, size);
-        shapeRenderer.rect(left, bottom, size, size * 0.2f);
-
-        shapeRenderer.setColor(baseColor.cpy().lerp(Color.WHITE, 0.2f));
-        shapeRenderer.rect(left, bottom + size * 0.8f, size, size * 0.2f);
-        shapeRenderer.rect(left, bottom, size * 0.2f, size);
-
-        shapeRenderer.setColor(1, 1, 1, 0.12f);
-        shapeRenderer.ellipse(left + size * 0.15f, bottom + size * 0.65f, size * 0.35f, size * 0.25f);
     }
 
     // 🔹 Помощен метод за HSV към Color (без java.awt)
