@@ -26,16 +26,22 @@ public class GameRenderer {
                                   int score, int level, float currentDropInterval,
                                   float levelUpTimer, boolean isGameOver, float gameOverTimer) {
 
-        // Тъй като отместването вече се прави в GameScreen, тук не добавяме PADDING.
-
-        // === Неонови настройки ===
+        // === Обновяване на неоновите настройки ===
         neonTime += Gdx.graphics.getDeltaTime() * 1.5f; // Скорост на въртене
         float pulse = 0.5f + 0.5f * MathUtils.sin(neonTime * 2f); // пулсация на яркостта
 
-        // Променяме леко оттенъка в зависимост от времето
-        float hueShift = (MathUtils.sin(neonTime) + 1f) * 0.08f; // малка промяна в оттенъка
-        Color neonColor = hsvToColor(0.5f + hueShift, 0.9f, 0.9f + 0.1f * pulse);
-        Color neonBorderColor = neonColor.cpy().lerp(Color.WHITE, 0.4f + 0.3f * pulse);
+        // Променяме оттенъка за по-ярък, класически неонов ефект (Синьо-Лилаво-Розово)
+        // Hue се движи между 0.5 (Cyan/Blue), 0.8 (Purple/Magenta), 0.0 (Pink/Red)
+        float hueCenter = 0.65f; // Център на Синьо-Лилаво
+        float hueAmplitude = 0.3f; // Голяма амплитуда, за да обхване Розово
+
+        // Бавната промяна на Hue за преливане между базовите цветове
+        float newHue = (hueCenter + hueAmplitude * MathUtils.sin(neonTime * 0.5f)) % 1f;
+        if (newHue < 0) newHue += 1f;
+
+        // Hue Shift Base все още контролира въртящата се светлинна точка
+        float hueShiftBase = (MathUtils.sin(neonTime * 1.5f) + 1f) * 0.08f;
+        Color neonBaseColor = hsvToColor(newHue, 1.0f, 1.0f); // S=1.0, V=1.0 за максимална яркост
 
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
 
@@ -172,7 +178,9 @@ public class GameRenderer {
         }
         shapeRenderer.end();
 
-        // === Неонова рамка (ДЕБЕЛИ ЛИНИИ, използва ShapeType.Filled) ===
+        // ----------------------------------------------------------------------------------
+
+        // === БЛОК ЗА НЕОНОВА РАМКА: СТРОГО ПРАВОЪГЪЛЕН ШНУР С RGB ПРЕЛИВАНЕ ===
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
 
         float borderThickness = 8f;
@@ -185,54 +193,74 @@ public class GameRenderer {
         float maxX = gridOffsetX + gridWidth;
         float maxY = gridOffsetY + gridHeight;
 
-        for (int i = 0; i < 4; i++) {
-            float segmentPhase = (neonTime + i * 0.25f) % 1f;
-            float intensity = 0.6f + 0.4f * MathUtils.sin(segmentPhase * MathUtils.PI * 2);
-            Color segColor = neonBorderColor.cpy().mul(intensity);
+        // Брой сегменти
+        final int SEGMENTS_PER_SIDE = 40;
+        final int TOTAL_SEGMENTS = 4 * SEGMENTS_PER_SIDE;
 
+        // 1/160 от пълната фаза
+        float phaseStep = 1f / TOTAL_SEGMENTS;
+        float totalPhaseOffset = neonTime * 0.5f;
+
+        // Дължините на промяна на координатите за един сегмент (права линия)
+        float dx = gridWidth / SEGMENTS_PER_SIDE;
+        float dy = gridHeight / SEGMENTS_PER_SIDE;
+
+
+        // Започваме цикъла, който рисува целия правоъгълен контур
+        for (int i = 0; i < TOTAL_SEGMENTS; i++) {
+
+            float phase = (totalPhaseOffset + i * phaseStep) % 1f;
+            Color segColor = calculateColor(phase, neonBaseColor);
             shapeRenderer.setColor(segColor);
 
-            switch (i) {
-                case 0: // Горна рамка (Линия между горните ъгли)
-                    shapeRenderer.rectLine(
-                        minX - halfThickness,
-                        maxY,
-                        maxX + halfThickness,
-                        maxY,
-                        borderThickness
-                    );
-                    break;
-                case 1: // Дясна рамка (Линия между десните ъгли)
-                    shapeRenderer.rectLine(
-                        maxX,
-                        minY - halfThickness,
-                        maxX,
-                        maxY + halfThickness,
-                        borderThickness
-                    );
-                    break;
-                case 2: // Долна рамка (Линия между долните ъгли)
-                    shapeRenderer.rectLine(
-                        maxX + halfThickness,
-                        minY,
-                        minX - halfThickness,
-                        minY,
-                        borderThickness
-                    );
-                    break;
-                case 3: // Лява рамка (Линия между левите ъгли)
-                    shapeRenderer.rectLine(
-                        minX,
-                        maxY + halfThickness,
-                        minX,
-                        minY - halfThickness,
-                        borderThickness
-                    );
-                    break;
+            int sectionIndex = i / SEGMENTS_PER_SIDE; // 0: Top, 1: Right, 2: Bottom, 3: Left
+            int j = i % SEGMENTS_PER_SIDE; // Индекс в рамките на страната
+
+            // 1. ПРАВА ЛИНИЯ (Рисува се като малък правоъгълник)
+            float x, y, width, height;
+
+            if (sectionIndex == 0) {
+                // TOP (от TL към TR)
+                x = minX + j * dx;
+                y = maxY - borderThickness;
+                width = dx;
+                height = borderThickness;
+            } else if (sectionIndex == 1) {
+                // RIGHT (от TR към BR)
+                x = maxX - borderThickness;
+                y = maxY - (j + 1) * dy;
+                width = borderThickness;
+                height = dy;
+            } else if (sectionIndex == 2) {
+                // BOTTOM (от BR към BL)
+                // Движим се надясно, за да съвпадне с посоката на анимацията
+                x = minX + (SEGMENTS_PER_SIDE - 1 - j) * dx;
+                y = minY;
+                width = dx;
+                height = borderThickness;
+            } else {
+                // LEFT (от BL към TL)
+                x = minX;
+                y = minY + j * dy;
+                width = borderThickness;
+                height = dy;
             }
+
+            // Рисуваме правоъгълника.
+            shapeRenderer.rect(x, y, width, height);
         }
 
         shapeRenderer.end();
+        // ----------------------------------------------------------------------------------
+    }
+
+    // 🔹 ПОМОЩЕН МЕТОД за изчисляване на цвета на база фазата
+    private static Color calculateColor(float phase, Color neonBaseColor) {
+        // Интензитет: синусоида с отместване, за да не е напълно черно
+        float intensity = 0.4f + 0.6f * MathUtils.sin(phase * MathUtils.PI * 2);
+
+        // Цвят: Базовият цвят се смесва с бяло за ефект на "гореща точка" и се затъмнява/изсветлява според интензитета
+        return neonBaseColor.cpy().lerp(Color.WHITE, 0.4f + 0.3f * intensity).mul(intensity);
     }
 
     private static void draw3DBlock(ShapeRenderer shapeRenderer, float x, float y, int CELL_SIZE, Color baseColor) {
