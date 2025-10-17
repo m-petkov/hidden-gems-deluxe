@@ -27,7 +27,6 @@ public class GameRenderer {
     public static void initialize() {
         try {
             if (blockTexture == null) {
-                // Търси block.png директно в assets/
                 blockTexture = new Texture(Gdx.files.internal("block.png"));
                 Gdx.app.log("GameRenderer", "block.png заредена успешно.");
             }
@@ -40,21 +39,18 @@ public class GameRenderer {
     public static void dispose() {
         if (blockTexture != null) {
             blockTexture.dispose();
+            blockTexture = null;
         }
     }
 
-    // 💡 АКТУАЛИЗИРАН МЕТОД: Рисува блока с текстура, прилагайки цветен филтър (tint)
-    // Този метод отново се казва drawBlock, както в началото.
+    // 💡 Рисува блока с текстура, прилагайки цветен филтър (tint)
     private static void drawBlock(SpriteBatch batch, float x, float y, int CELL_SIZE, Color baseColor) {
         if (blockTexture == null) return;
 
-        // Прилагаме филтър (tint) с базовия цвят
         batch.setColor(baseColor);
 
-        // Рисуваме текстурата
         batch.draw(blockTexture, x, y, CELL_SIZE, CELL_SIZE);
 
-        // ВАЖНО: Връщаме цвета на batch към бяло
         batch.setColor(Color.WHITE);
     }
 
@@ -87,8 +83,6 @@ public class GameRenderer {
             }
         }
 
-        // **ПРЕМАХНАТО:** Тук преди бяха извиквани drawBlockBackground методите.
-
         // Рисуване на частиците
         for (Particle p : particles) {
             shapeRenderer.setColor(p.color.r, p.color.g, p.color.b, p.life / p.initialLife);
@@ -116,7 +110,6 @@ public class GameRenderer {
         // === II. SpriteBatch (За БЛОКОВЕ и ТЕКСТ) ===
         batch.begin();
 
-        // **АКТУАЛИЗИРАНО:** Извикваме drawBlock (с текстурата и tint)
         // Рисуване на блоковете в мрежата
         for (int row = 0; row < GameConstants.ROWS; row++) {
             for (int col = 0; col < GameConstants.COLS; col++) {
@@ -128,7 +121,7 @@ public class GameRenderer {
             }
         }
 
-        // **АКТУАЛИЗИРАНО:** Рисуване на падащия блок
+        // Рисуване на падащия блок
         for (int i = 0; i < 3; i++) {
             if (fallingBlock.getFallingRow() - i >= 0) {
                 drawBlock(batch, gridOffsetX + fallingBlock.getFallingCol() * CELL_SIZE,
@@ -137,7 +130,7 @@ public class GameRenderer {
             }
         }
 
-        // **АКТУАЛИЗИРАНО:** "Next:" блок
+        // "Next:" блок
         float previewX = gridOffsetX + GameConstants.COLS * CELL_SIZE + 40;
         float nextBlockY = gridOffsetY + (GameConstants.ROWS - 2) * CELL_SIZE;
         for (int i = 0; i < 3; i++) {
@@ -147,6 +140,9 @@ public class GameRenderer {
 
 
         // === Текстова част ===
+        // КОРЕКЦИЯ: Смяна на Color.ORANGE с Color.LIME
+        final Color LIME_COLOR = Color.LIME;
+
         String nextText = "Next:";
         GlyphLayout layout = new GlyphLayout(font, nextText);
         float textX = previewX + CELL_SIZE / 2f - layout.width / 2f;
@@ -155,7 +151,7 @@ public class GameRenderer {
 
         font.setColor(0, 0, 0, 0.5f);
         font.draw(batch, nextText, textX + 1, textY - 1);
-        font.setColor(Color.LIME);
+        font.setColor(LIME_COLOR); // <--- Смяна
         font.draw(batch, nextText, textX, textY);
 
         String scoreText = "Score: " + score;
@@ -165,7 +161,7 @@ public class GameRenderer {
 
         font.setColor(0, 0, 0, 0.5f);
         font.draw(batch, scoreText, scoreX + 1, scoreY - 1);
-        font.setColor(Color.LIME);
+        font.setColor(LIME_COLOR); // <--- Смяна
         font.draw(batch, scoreText, scoreX, scoreY);
 
         String speedText = String.format("Speed: %.2f s", currentDropInterval);
@@ -175,7 +171,7 @@ public class GameRenderer {
 
         font.setColor(0, 0, 0, 0.5f);
         font.draw(batch, speedText, speedX + 1, speedY - 1);
-        font.setColor(Color.LIME);
+        font.setColor(LIME_COLOR); // <--- Смяна
         font.draw(batch, speedText, speedX, speedY);
 
         String levelDisplayText = "Level: " + level;
@@ -185,7 +181,7 @@ public class GameRenderer {
 
         font.setColor(0, 0, 0, 0.5f);
         font.draw(batch, levelDisplayText, levelX + 1, levelY - 1);
-        font.setColor(Color.LIME);
+        font.setColor(LIME_COLOR); // <--- Смяна
         font.draw(batch, levelDisplayText, levelX, levelY);
 
         if (levelUpTimer > 0f) {
