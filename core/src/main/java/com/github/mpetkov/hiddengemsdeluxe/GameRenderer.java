@@ -155,7 +155,7 @@ public class GameRenderer {
 
         font.setColor(0, 0, 0, 0.5f);
         font.draw(batch, nextText, textX + 1, textY - 1);
-        font.setColor(Color.ORANGE);
+        font.setColor(Color.LIME);
         font.draw(batch, nextText, textX, textY);
 
         String scoreText = "Score: " + score;
@@ -165,7 +165,7 @@ public class GameRenderer {
 
         font.setColor(0, 0, 0, 0.5f);
         font.draw(batch, scoreText, scoreX + 1, scoreY - 1);
-        font.setColor(Color.ORANGE);
+        font.setColor(Color.LIME);
         font.draw(batch, scoreText, scoreX, scoreY);
 
         String speedText = String.format("Speed: %.2f s", currentDropInterval);
@@ -175,7 +175,7 @@ public class GameRenderer {
 
         font.setColor(0, 0, 0, 0.5f);
         font.draw(batch, speedText, speedX + 1, speedY - 1);
-        font.setColor(Color.ORANGE);
+        font.setColor(Color.LIME);
         font.draw(batch, speedText, speedX, speedY);
 
         String levelDisplayText = "Level: " + level;
@@ -185,7 +185,7 @@ public class GameRenderer {
 
         font.setColor(0, 0, 0, 0.5f);
         font.draw(batch, levelDisplayText, levelX + 1, levelY - 1);
-        font.setColor(Color.ORANGE);
+        font.setColor(Color.LIME);
         font.draw(batch, levelDisplayText, levelX, levelY);
 
         if (levelUpTimer > 0f) {
