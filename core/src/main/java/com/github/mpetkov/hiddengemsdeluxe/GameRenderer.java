@@ -1,6 +1,6 @@
-package com.github.mpetkov.hiddengemsdeluxe;// GameRenderer.java
-// Няма декларация за пакет
+package com.github.mpetkov.hiddengemsdeluxe;
 
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
@@ -10,9 +10,10 @@ import com.badlogic.gdx.math.MathUtils;
 
 import java.util.List;
 
-
-
 public class GameRenderer {
+
+    // 🔹 За анимацията на неоновия контур
+    private static float neonTime = 0f;
 
     private GameRenderer() {
         // Приватен конструктор за статичен клас
@@ -25,7 +26,19 @@ public class GameRenderer {
                                   int score, int level, float currentDropInterval,
                                   float levelUpTimer, boolean isGameOver, float gameOverTimer) {
 
-        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled); // <- Единствен begin за filled форми
+        // === Неонови настройки ===
+        neonTime += Gdx.graphics.getDeltaTime() * 1.5f; // Скорост на въртене
+        float pulse = 0.5f + 0.5f * MathUtils.sin(neonTime * 2f); // пулсация на яркостта
+
+        // Основен цвят (неонов синьо-зелен)
+        Color baseNeon = new Color(0f, 1f, 0.9f, 1f);
+
+        // Променяме леко оттенъка в зависимост от времето
+        float hueShift = (MathUtils.sin(neonTime) + 1f) * 0.08f; // малка промяна в оттенъка
+        Color neonColor = hsvToColor(0.5f + hueShift, 0.9f, 0.9f + 0.1f * pulse);
+        Color neonBorderColor = neonColor.cpy().lerp(Color.WHITE, 0.4f + 0.3f * pulse);
+
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
         for (int row = 0; row < GameConstants.ROWS; row++) {
             for (int col = 0; col < GameConstants.COLS; col++) {
                 shapeRenderer.setColor(0.15f, 0.15f, 0.2f, 1);
@@ -43,9 +56,6 @@ public class GameRenderer {
         }
 
         for (int i = 0; i < 3; i++) {
-            // float drawY = (fallingBlock.getFallingRow() + 1 - (GameConstants.ROWS - fallingBlock.getFallingRow())) * CELL_SIZE; // Тази променлива не се използва
-            // float drawYCorrected = gridOffsetY + (fallingBlock.getFallingRow() - i) * CELL_SIZE; // Тази променлива не се използва
-
             if (fallingBlock.getFallingRow() - i >= 0) {
                 draw3DBlock(shapeRenderer, gridOffsetX + fallingBlock.getFallingCol() * CELL_SIZE,
                     gridOffsetY + (fallingBlock.getFallingRow() - i) * CELL_SIZE,
@@ -62,17 +72,17 @@ public class GameRenderer {
             float x = gridOffsetX + m.col * CELL_SIZE;
             float y = gridOffsetY + m.row * CELL_SIZE;
             float alpha = 1f - m.timer / GameConstants.MATCH_PROCESS_DELAY;
-            float pulse = 0.5f + 0.5f * MathUtils.sin(alpha * MathUtils.PI * 2);
+            float pulseM = 0.5f + 0.5f * MathUtils.sin(alpha * MathUtils.PI * 2);
 
             Color glowTarget = new Color(1f, 0.85f, 0.6f, 1f);
-            Color glowColor = m.color.cpy().lerp(glowTarget, pulse);
-            glowColor.a = 0.7f + 0.3f * pulse;
+            Color glowColor = m.color.cpy().lerp(glowTarget, pulseM);
+            glowColor.a = 0.7f + 0.3f * pulseM;
 
             shapeRenderer.setColor(glowColor);
             shapeRenderer.rect(x + 2, y + 2, CELL_SIZE - 4, CELL_SIZE - 4);
         }
 
-        // ТУК ПРЕМЕСТИХ КОДА ЗА РИСУВАНЕ НА "NEXT:" БЛОКА
+        // "Next:" блок
         float previewX = gridOffsetX + GameConstants.COLS * CELL_SIZE + 40;
         float nextBlockY = gridOffsetY + (GameConstants.ROWS - 2) * CELL_SIZE;
         for (int i = 0; i < 3; i++) {
@@ -80,11 +90,10 @@ public class GameRenderer {
             draw3DBlock(shapeRenderer, previewX, y, CELL_SIZE, ColorMapper.getColor(fallingBlock.getNextColors()[i]));
         }
 
-        shapeRenderer.end(); // <- Единствен end за filled форми
+        shapeRenderer.end();
 
-
+        // === Текстова част ===
         batch.begin();
-        // Текстът "Next:" вече е тук, както преди.
         String nextText = "Next:";
         GlyphLayout layout = new GlyphLayout(font, nextText);
         float textX = previewX + CELL_SIZE / 2f - layout.width / 2f;
@@ -96,8 +105,6 @@ public class GameRenderer {
         font.setColor(Color.ORANGE);
         font.draw(batch, nextText, textX, textY);
 
-        // ... останалият код за текст (score, speed, level)
-
         String scoreText = "Score: " + score;
         GlyphLayout scoreLayout = new GlyphLayout(font, scoreText);
         float scoreX = gridOffsetX - scoreLayout.width - 40;
@@ -108,7 +115,6 @@ public class GameRenderer {
         font.setColor(Color.ORANGE);
         font.draw(batch, scoreText, scoreX, scoreY);
 
-        // currentDropInterval вече е параметър, не го декларирайте отново.
         String speedText = String.format("Speed: %.2f s", currentDropInterval);
         GlyphLayout speedLayout = new GlyphLayout(font, speedText);
         float speedX = scoreX + scoreLayout.width - speedLayout.width;
@@ -150,7 +156,8 @@ public class GameRenderer {
         }
         batch.end();
 
-        shapeRenderer.begin(ShapeRenderer.ShapeType.Line); // <- Нов begin за line форми
+        // === Рисуване на линии на мрежата и неонова рамка ===
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
         shapeRenderer.setColor(0.1f, 0.1f, 0.15f, 1);
         for (int row = 0; row <= GameConstants.ROWS; row++) {
             shapeRenderer.line(gridOffsetX, gridOffsetY + row * CELL_SIZE, gridOffsetX + GameConstants.COLS * CELL_SIZE, gridOffsetY + row * CELL_SIZE);
@@ -158,7 +165,48 @@ public class GameRenderer {
         for (int col = 0; col <= GameConstants.COLS; col++) {
             shapeRenderer.line(gridOffsetX + col * CELL_SIZE, gridOffsetY, gridOffsetX + col * CELL_SIZE, gridOffsetY + GameConstants.ROWS * CELL_SIZE);
         }
-        shapeRenderer.end(); // <- Нов end за line форми
+
+        // === Неонова рамка, която се "върти" по периферията ===
+        float borderThickness = 8f;
+        for (int i = 0; i < 4; i++) {
+            float segmentPhase = (neonTime + i * 0.25f) % 1f;
+            float intensity = 0.6f + 0.4f * MathUtils.sin(segmentPhase * MathUtils.PI * 2);
+            Color segColor = neonBorderColor.cpy().mul(intensity);
+
+            shapeRenderer.setColor(segColor);
+
+            switch (i) {
+                case 0: // горна рамка
+                    shapeRenderer.rectLine(gridOffsetX - borderThickness, gridOffsetY + GameConstants.ROWS * CELL_SIZE + borderThickness,
+                        gridOffsetX + GameConstants.COLS * CELL_SIZE + borderThickness,
+                        gridOffsetY + GameConstants.ROWS * CELL_SIZE + borderThickness,
+                        borderThickness);
+                    break;
+                case 1: // дясна
+                    shapeRenderer.rectLine(gridOffsetX + GameConstants.COLS * CELL_SIZE + borderThickness,
+                        gridOffsetY + GameConstants.ROWS * CELL_SIZE + borderThickness,
+                        gridOffsetX + GameConstants.COLS * CELL_SIZE + borderThickness,
+                        gridOffsetY - borderThickness,
+                        borderThickness);
+                    break;
+                case 2: // долна
+                    shapeRenderer.rectLine(gridOffsetX + GameConstants.COLS * CELL_SIZE + borderThickness,
+                        gridOffsetY - borderThickness,
+                        gridOffsetX - borderThickness,
+                        gridOffsetY - borderThickness,
+                        borderThickness);
+                    break;
+                case 3: // лява
+                    shapeRenderer.rectLine(gridOffsetX - borderThickness,
+                        gridOffsetY - borderThickness,
+                        gridOffsetX - borderThickness,
+                        gridOffsetY + GameConstants.ROWS * CELL_SIZE + borderThickness,
+                        borderThickness);
+                    break;
+            }
+        }
+
+        shapeRenderer.end();
     }
 
     private static void draw3DBlock(ShapeRenderer shapeRenderer, float x, float y, int CELL_SIZE, Color baseColor) {
@@ -186,5 +234,24 @@ public class GameRenderer {
 
         shapeRenderer.setColor(1, 1, 1, 0.12f);
         shapeRenderer.ellipse(left + size * 0.15f, bottom + size * 0.65f, size * 0.35f, size * 0.25f);
+    }
+
+    // 🔹 Помощен метод за HSV към Color (без java.awt)
+    private static Color hsvToColor(float h, float s, float v) {
+        float r = 0, g = 0, b = 0;
+        int i = (int) Math.floor(h * 6);
+        float f = h * 6 - i;
+        float p = v * (1 - s);
+        float q = v * (1 - f * s);
+        float t = v * (1 - (1 - f) * s);
+        switch (i % 6) {
+            case 0: r = v; g = t; b = p; break;
+            case 1: r = q; g = v; b = p; break;
+            case 2: r = p; g = v; b = t; break;
+            case 3: r = p; g = q; b = v; break;
+            case 4: r = t; g = p; b = v; break;
+            case 5: r = v; g = p; b = q; break;
+        }
+        return new Color(r, g, b, 1f);
     }
 }
