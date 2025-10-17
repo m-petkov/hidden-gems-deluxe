@@ -26,12 +26,11 @@ public class GameRenderer {
                                   int score, int level, float currentDropInterval,
                                   float levelUpTimer, boolean isGameOver, float gameOverTimer) {
 
+        // Тъй като отместването вече се прави в GameScreen, тук не добавяме PADDING.
+
         // === Неонови настройки ===
         neonTime += Gdx.graphics.getDeltaTime() * 1.5f; // Скорост на въртене
         float pulse = 0.5f + 0.5f * MathUtils.sin(neonTime * 2f); // пулсация на яркостта
-
-        // Основен цвят (неонов синьо-зелен)
-        Color baseNeon = new Color(0f, 1f, 0.9f, 1f);
 
         // Променяме леко оттенъка в зависимост от времето
         float hueShift = (MathUtils.sin(neonTime) + 1f) * 0.08f; // малка промяна в оттенъка
@@ -39,6 +38,8 @@ public class GameRenderer {
         Color neonBorderColor = neonColor.cpy().lerp(Color.WHITE, 0.4f + 0.3f * pulse);
 
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+
+        // Рисуване на фон на мрежата
         for (int row = 0; row < GameConstants.ROWS; row++) {
             for (int col = 0; col < GameConstants.COLS; col++) {
                 shapeRenderer.setColor(0.15f, 0.15f, 0.2f, 1);
@@ -46,6 +47,7 @@ public class GameRenderer {
             }
         }
 
+        // Рисуване на блоковете в мрежата
         for (int row = 0; row < GameConstants.ROWS; row++) {
             for (int col = 0; col < GameConstants.COLS; col++) {
                 int color = grid[row][col];
@@ -55,6 +57,7 @@ public class GameRenderer {
             }
         }
 
+        // Рисуване на падащия блок
         for (int i = 0; i < 3; i++) {
             if (fallingBlock.getFallingRow() - i >= 0) {
                 draw3DBlock(shapeRenderer, gridOffsetX + fallingBlock.getFallingCol() * CELL_SIZE,
@@ -63,11 +66,13 @@ public class GameRenderer {
             }
         }
 
+        // Рисуване на частиците
         for (Particle p : particles) {
             shapeRenderer.setColor(p.color.r, p.color.g, p.color.b, p.life / p.initialLife);
             shapeRenderer.circle(p.x, p.y, p.size);
         }
 
+        // Рисуване на маркерите за съвпадение
         for (MatchMarker m : matchMarkers) {
             float x = gridOffsetX + m.col * CELL_SIZE;
             float y = gridOffsetY + m.row * CELL_SIZE;
@@ -128,7 +133,7 @@ public class GameRenderer {
         String levelDisplayText = "Level: " + level;
         GlyphLayout levelLayout = new GlyphLayout(font, levelDisplayText);
         float levelX = speedX + speedLayout.width - levelLayout.width;
-        float levelY = speedY - speedLayout.height - 10;
+        float levelY = speedY - levelLayout.height - 10;
 
         font.setColor(0, 0, 0, 0.5f);
         font.draw(batch, levelDisplayText, levelX + 1, levelY - 1);
@@ -156,7 +161,7 @@ public class GameRenderer {
         }
         batch.end();
 
-        // === Рисуване на линии на мрежата и неонова рамка ===
+        // === Рисуване на линии на мрежата (ТЪНКИ ЛИНИИ) ===
         shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
         shapeRenderer.setColor(0.1f, 0.1f, 0.15f, 1);
         for (int row = 0; row <= GameConstants.ROWS; row++) {
@@ -165,9 +170,21 @@ public class GameRenderer {
         for (int col = 0; col <= GameConstants.COLS; col++) {
             shapeRenderer.line(gridOffsetX + col * CELL_SIZE, gridOffsetY, gridOffsetX + col * CELL_SIZE, gridOffsetY + GameConstants.ROWS * CELL_SIZE);
         }
+        shapeRenderer.end();
 
-        // === Неонова рамка, която се "върти" по периферията ===
+        // === Неонова рамка (ДЕБЕЛИ ЛИНИИ, използва ShapeType.Filled) ===
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+
         float borderThickness = 8f;
+        float halfThickness = borderThickness / 2f;
+        float gridWidth = GameConstants.COLS * CELL_SIZE;
+        float gridHeight = GameConstants.ROWS * CELL_SIZE;
+
+        float minX = gridOffsetX;
+        float minY = gridOffsetY;
+        float maxX = gridOffsetX + gridWidth;
+        float maxY = gridOffsetY + gridHeight;
+
         for (int i = 0; i < 4; i++) {
             float segmentPhase = (neonTime + i * 0.25f) % 1f;
             float intensity = 0.6f + 0.4f * MathUtils.sin(segmentPhase * MathUtils.PI * 2);
@@ -176,32 +193,41 @@ public class GameRenderer {
             shapeRenderer.setColor(segColor);
 
             switch (i) {
-                case 0: // горна рамка
-                    shapeRenderer.rectLine(gridOffsetX - borderThickness, gridOffsetY + GameConstants.ROWS * CELL_SIZE + borderThickness,
-                        gridOffsetX + GameConstants.COLS * CELL_SIZE + borderThickness,
-                        gridOffsetY + GameConstants.ROWS * CELL_SIZE + borderThickness,
-                        borderThickness);
+                case 0: // Горна рамка (Линия между горните ъгли)
+                    shapeRenderer.rectLine(
+                        minX - halfThickness,
+                        maxY,
+                        maxX + halfThickness,
+                        maxY,
+                        borderThickness
+                    );
                     break;
-                case 1: // дясна
-                    shapeRenderer.rectLine(gridOffsetX + GameConstants.COLS * CELL_SIZE + borderThickness,
-                        gridOffsetY + GameConstants.ROWS * CELL_SIZE + borderThickness,
-                        gridOffsetX + GameConstants.COLS * CELL_SIZE + borderThickness,
-                        gridOffsetY - borderThickness,
-                        borderThickness);
+                case 1: // Дясна рамка (Линия между десните ъгли)
+                    shapeRenderer.rectLine(
+                        maxX,
+                        minY - halfThickness,
+                        maxX,
+                        maxY + halfThickness,
+                        borderThickness
+                    );
                     break;
-                case 2: // долна
-                    shapeRenderer.rectLine(gridOffsetX + GameConstants.COLS * CELL_SIZE + borderThickness,
-                        gridOffsetY - borderThickness,
-                        gridOffsetX - borderThickness,
-                        gridOffsetY - borderThickness,
-                        borderThickness);
+                case 2: // Долна рамка (Линия между долните ъгли)
+                    shapeRenderer.rectLine(
+                        maxX + halfThickness,
+                        minY,
+                        minX - halfThickness,
+                        minY,
+                        borderThickness
+                    );
                     break;
-                case 3: // лява
-                    shapeRenderer.rectLine(gridOffsetX - borderThickness,
-                        gridOffsetY - borderThickness,
-                        gridOffsetX - borderThickness,
-                        gridOffsetY + GameConstants.ROWS * CELL_SIZE + borderThickness,
-                        borderThickness);
+                case 3: // Лява рамка (Линия между левите ъгли)
+                    shapeRenderer.rectLine(
+                        minX,
+                        maxY + halfThickness,
+                        minX,
+                        minY - halfThickness,
+                        borderThickness
+                    );
                     break;
             }
         }

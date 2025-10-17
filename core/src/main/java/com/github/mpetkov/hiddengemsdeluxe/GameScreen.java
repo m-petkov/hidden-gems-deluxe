@@ -95,10 +95,25 @@ public class GameScreen implements Screen, InputProcessor {
 
         background = new AnimatedBackground(100);
 
-        CELL_SIZE = Gdx.graphics.getHeight() / GameConstants.ROWS;
+        // === КОРИГИРАНО ИЗЧИСЛЯВАНЕ НА ПОЗИЦИЯТА (за перфектно центриране) ===
+        final int PADDING = 20;
+
+        // 1. Изчисляваме CELL_SIZE, като осигуряваме, че има място за PADDING отгоре и отдолу.
+        CELL_SIZE = (Gdx.graphics.getHeight() - 2 * PADDING) / GameConstants.ROWS;
+
+        // 2. Изчисляваме всички размери на компонентите
         int sidePanelWidth = CELL_SIZE * 2;
-        gridOffsetX = (Gdx.graphics.getWidth() - GameConstants.COLS * CELL_SIZE - sidePanelWidth) / 2;
-        gridOffsetY = 0;
+        int gridWidth = GameConstants.COLS * CELL_SIZE;
+        int gridHeight = GameConstants.ROWS * CELL_SIZE;
+        int totalGameWidth = gridWidth + sidePanelWidth;
+
+        // 3. Вертикално Центриране: Вземаме цялото свободно вертикално пространство и го делим на две.
+        gridOffsetY = (Gdx.graphics.getHeight() - gridHeight) / 2;
+
+        // 4. Хоризонтално Центриране: Изваждаме общата ширина на игралната зона и делим на две.
+        gridOffsetX = (Gdx.graphics.getWidth() - totalGameWidth) / 2;
+
+        // ===========================================
 
         FreeTypeFontGenerator generator = new FreeTypeFontGenerator(Gdx.files.internal("fonts/Play-Regular.ttf"));
         FreeTypeFontGenerator.FreeTypeFontParameter parameter = new FreeTypeFontGenerator.FreeTypeFontParameter();
