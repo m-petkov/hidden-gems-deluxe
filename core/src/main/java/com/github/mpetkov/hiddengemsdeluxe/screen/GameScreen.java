@@ -24,6 +24,7 @@ import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.utils.Timer;
+import com.github.mpetkov.hiddengemsdeluxe.util.SaveManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -344,7 +345,7 @@ public class GameScreen implements Screen, InputProcessor {
             font.getData().setScale(1f);
 
             if (gameOverTimer <= 0f) {
-                // ✅ КОРЕКЦИЯ 2: Извикваме dispose преди да сменим екрана
+                SaveManager.saveScore(score, level);
                 dispose();
                 game.setScreen(new WelcomeScreen(game));
             }
@@ -367,6 +368,12 @@ public class GameScreen implements Screen, InputProcessor {
 
     @Override
     public boolean keyDown(int keycode) {
+
+        if (keycode == Input.Keys.ESCAPE) {
+            game.pauseGame();
+            return true;
+        }
+
         if (isGameOver) return false;
 
         if (keycode == Input.Keys.LEFT && fallingBlock.canMove(-1)) {
@@ -375,9 +382,8 @@ public class GameScreen implements Screen, InputProcessor {
             fallingBlock.moveHorizontal(1);
         } else if (keycode == Input.Keys.UP) {
             fallingBlock.rotateBlock();
-        } else if (keycode == Input.Keys.ENTER || keycode == Input.Keys.ESCAPE) {
-            game.pauseGame(this);
         }
+
         return true;
     }
 
