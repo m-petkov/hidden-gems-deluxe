@@ -5,37 +5,31 @@ import com.badlogic.gdx.Preferences;
 
 public class SaveManager {
 
-    private static final String PREFS = "hidden_gems_save";
-    private static final String HIGH_SCORE = "high_score";
-    private static final String HIGH_LEVEL = "high_level";
+    private static final Preferences prefs =
+        Gdx.app.getPreferences("HiddenGemsDeluxe");
 
-    private static Preferences prefs() {
-        return Gdx.app.getPreferences(PREFS);
+    public static void saveScore(int score, int level) {
+        if (score > getHighScore()) {
+            prefs.putInteger("highScore", score);
+        }
+        if (level > getHighLevel()) {
+            prefs.putInteger("highLevel", level);
+        }
+        prefs.flush();
     }
 
     public static int getHighScore() {
-        return prefs().getInteger(HIGH_SCORE, 0);
+        return prefs.getInteger("highScore", 0);
     }
 
     public static int getHighLevel() {
-        return prefs().getInteger(HIGH_LEVEL, 1);
+        return prefs.getInteger("highLevel", 1);
     }
 
-    public static void saveScore(int score, int level) {
-        boolean changed = false;
-
-        if (score > getHighScore()) {
-            prefs().putInteger(HIGH_SCORE, score);
-            changed = true;
-        }
-
-        if (level > getHighLevel()) {
-            prefs().putInteger(HIGH_LEVEL, level);
-            changed = true;
-        }
-
-        if (changed) {
-            prefs().flush();
-        }
+    // ✅ НОВО
+    public static void reset() {
+        prefs.putInteger("highScore", 0);
+        prefs.putInteger("highLevel", 1);
+        prefs.flush();
     }
 }
