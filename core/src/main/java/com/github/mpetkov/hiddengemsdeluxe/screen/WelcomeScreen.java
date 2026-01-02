@@ -1,4 +1,7 @@
-package com.github.mpetkov.hiddengemsdeluxe;
+package com.github.mpetkov.hiddengemsdeluxe.screen;
+import com.github.mpetkov.hiddengemsdeluxe.GameApp;
+
+
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
@@ -17,12 +20,12 @@ import com.badlogic.gdx.utils.viewport.ScreenViewport;
 
 public class WelcomeScreen implements Screen {
 
-    private final Main game;
+    private final GameApp game;
     private Stage stage;
     private Skin skin;
     private TextButton resumeButton;
 
-    public WelcomeScreen(Main game) {
+    public WelcomeScreen(GameApp game) {
         this.game = game;
     }
 

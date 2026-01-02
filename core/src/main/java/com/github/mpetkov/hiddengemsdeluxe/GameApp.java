@@ -1,9 +1,13 @@
 package com.github.mpetkov.hiddengemsdeluxe;
 
+import com.github.mpetkov.hiddengemsdeluxe.screen.GameScreen;
+import com.github.mpetkov.hiddengemsdeluxe.screen.WelcomeScreen;
+
+
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Screen;
 
-public class Main extends Game {
+public class GameApp extends Game {
     public boolean isPaused = false;
     public Screen pausedGameScreen = null;
 

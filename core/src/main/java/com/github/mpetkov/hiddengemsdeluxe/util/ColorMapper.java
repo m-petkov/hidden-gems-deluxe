@@ -1,4 +1,6 @@
-package com.github.mpetkov.hiddengemsdeluxe;// ColorMapper.java
+package com.github.mpetkov.hiddengemsdeluxe.util;
+
+
 // Няма декларация за пакет
 
 import com.badlogic.gdx.graphics.Color;

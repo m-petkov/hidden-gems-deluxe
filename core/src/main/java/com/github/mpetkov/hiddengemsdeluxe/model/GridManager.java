@@ -1,4 +1,8 @@
-package com.github.mpetkov.hiddengemsdeluxe;// GridManager.java
+package com.github.mpetkov.hiddengemsdeluxe.model;
+import com.github.mpetkov.hiddengemsdeluxe.model.GridManager;
+
+import com.github.mpetkov.hiddengemsdeluxe.screen.GameScreen;
+
 // Няма декларация за пакет - този файл е в същия пакет като GameScreen.java
 
 import java.util.Arrays;

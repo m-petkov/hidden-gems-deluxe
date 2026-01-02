@@ -1,4 +1,11 @@
-package com.github.mpetkov.hiddengemsdeluxe;
+package com.github.mpetkov.hiddengemsdeluxe.render;
+
+import com.github.mpetkov.hiddengemsdeluxe.model.FallingBlock;
+import com.github.mpetkov.hiddengemsdeluxe.model.MatchMarker;
+import com.github.mpetkov.hiddengemsdeluxe.model.Particle;
+import com.github.mpetkov.hiddengemsdeluxe.util.ColorMapper;
+import com.github.mpetkov.hiddengemsdeluxe.util.GameConstants;
+
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;

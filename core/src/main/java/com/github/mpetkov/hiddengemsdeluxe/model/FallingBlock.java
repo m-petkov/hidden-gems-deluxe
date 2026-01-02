@@ -1,4 +1,8 @@
-package com.github.mpetkov.hiddengemsdeluxe;// FallingBlock.java
+package com.github.mpetkov.hiddengemsdeluxe.model;
+import com.github.mpetkov.hiddengemsdeluxe.model.GridManager;
+
+import com.github.mpetkov.hiddengemsdeluxe.util.GameConstants;
+
 // Няма декларация за пакет
 
 import java.util.Random;

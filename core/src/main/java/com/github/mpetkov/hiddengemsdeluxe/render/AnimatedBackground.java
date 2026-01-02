@@ -1,5 +1,7 @@
 // AnimatedBackground.java
-package com.github.mpetkov.hiddengemsdeluxe;
+
+
+package com.github.mpetkov.hiddengemsdeluxe.render;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;

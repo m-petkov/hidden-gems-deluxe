@@ -1,4 +1,15 @@
-package com.github.mpetkov.hiddengemsdeluxe;
+package com.github.mpetkov.hiddengemsdeluxe.screen;
+import com.github.mpetkov.hiddengemsdeluxe.GameApp;
+import com.github.mpetkov.hiddengemsdeluxe.model.GridManager;
+
+import com.github.mpetkov.hiddengemsdeluxe.model.FallingBlock;
+import com.github.mpetkov.hiddengemsdeluxe.model.MatchMarker;
+import com.github.mpetkov.hiddengemsdeluxe.model.Particle;
+import com.github.mpetkov.hiddengemsdeluxe.render.AnimatedBackground;
+import com.github.mpetkov.hiddengemsdeluxe.render.GameRenderer;
+import com.github.mpetkov.hiddengemsdeluxe.util.ColorMapper;
+import com.github.mpetkov.hiddengemsdeluxe.util.GameConstants;
+
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
@@ -20,7 +31,7 @@ import java.util.Random;
 
 public class GameScreen implements Screen, InputProcessor {
 
-    private final Main game;
+    private final GameApp game;
     private ShapeRenderer shapeRenderer;
     private BitmapFont font;
     private SpriteBatch batch;
@@ -60,7 +71,7 @@ public class GameScreen implements Screen, InputProcessor {
 
     private float hardDropCooldown = 0f;
 
-    public GameScreen(Main game) {
+    public GameScreen(GameApp game) {
         this.game = game;
     }
 
