@@ -1,8 +1,5 @@
 package com.github.mpetkov.hiddengemsdeluxe.util;
 
-
-// Няма декларация за пакет
-
 public final class GameConstants {
     private GameConstants() {
         // Приватен конструктор, за да предотврати инстанциране

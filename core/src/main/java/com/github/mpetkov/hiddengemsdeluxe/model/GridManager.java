@@ -3,8 +3,6 @@ import com.github.mpetkov.hiddengemsdeluxe.model.GridManager;
 
 import com.github.mpetkov.hiddengemsdeluxe.screen.GameScreen;
 
-// Няма декларация за пакет - този файл е в същия пакет като GameScreen.java
-
 import java.util.Arrays;
 
 public class GridManager {

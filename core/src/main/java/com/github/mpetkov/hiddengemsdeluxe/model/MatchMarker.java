@@ -1,8 +1,5 @@
 package com.github.mpetkov.hiddengemsdeluxe.model;
 
-
-// Няма декларация за пакет
-
 import com.badlogic.gdx.graphics.Color;
 
 public class MatchMarker {
