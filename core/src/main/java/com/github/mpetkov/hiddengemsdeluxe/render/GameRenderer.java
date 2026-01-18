@@ -22,6 +22,9 @@ public class GameRenderer {
 
     // 🔹 За анимацията на неоновия контур
     private static float neonTime = 0f;
+    
+    // 💎 За анимацията на 3D ефектите на камъните
+    private static float gemAnimationTime = 0f;
 
     // 💡 Текстура за блоковете
     private static Texture blockTexture;
@@ -35,7 +38,6 @@ public class GameRenderer {
         try {
             if (blockTexture == null) {
                 blockTexture = new Texture(Gdx.files.internal("block.png"));
-                Gdx.app.log("GameRenderer", "block.png заредена успешно.");
             }
         } catch (Exception e) {
             Gdx.app.error("GameRenderer", "Грешка при зареждане на block.png. Уверете се, че файлът е в 'assets/': " + e.getMessage());
@@ -50,14 +52,22 @@ public class GameRenderer {
         }
     }
 
-    // 💡 Рисува блока с текстура, прилагайки цветен филтър (tint)
-    private static void drawBlock(SpriteBatch batch, float x, float y, int CELL_SIZE, Color baseColor) {
+    // 💎 Рисува блока с пулсиращ ефект
+    private static void drawBlock(SpriteBatch batch, float x, float y, int CELL_SIZE, Color baseColor, int row, int col, boolean isFalling) {
         if (blockTexture == null) return;
 
+        // Уникално време за анимация базирано на позицията
+        float uniqueTime = gemAnimationTime + (row * 0.3f) + (col * 0.2f);
+        
+        // Пулсиращ ефект (много субтилен)
+        float pulseScale = 1f + 0.03f * MathUtils.sin(uniqueTime * 2f);
+        float size = CELL_SIZE * pulseScale;
+        float offsetX = (CELL_SIZE - size) / 2f;
+        float offsetY = (CELL_SIZE - size) / 2f;
+
+        // Основен блок с текстура
         batch.setColor(baseColor);
-
-        batch.draw(blockTexture, x, y, CELL_SIZE, CELL_SIZE);
-
+        batch.draw(blockTexture, x + offsetX, y + offsetY, size, size);
         batch.setColor(Color.WHITE);
     }
 
@@ -66,10 +76,14 @@ public class GameRenderer {
                                   int[][] grid, FallingBlock fallingBlock,
                                   List<Particle> particles, List<MatchMarker> matchMarkers,
                                   int score, int level, float currentDropInterval,
-                                  float levelUpTimer, boolean isGameOver, float gameOverTimer) {
+                                  float levelUpTimer, boolean isGameOver, float gameOverTimer,
+                                  float visualFallingY) {
 
         // === Обновяване на неоновите настройки ===
         neonTime += Gdx.graphics.getDeltaTime() * 1.5f;
+        
+        // === Обновяване на анимацията на камъните ===
+        gemAnimationTime += Gdx.graphics.getDeltaTime() * 2f;
 
         float hueCenter = 0.65f;
         float hueAmplitude = 0.3f;
@@ -123,17 +137,18 @@ public class GameRenderer {
                 int colorCode = grid[row][col];
                 if (colorCode != -1) {
                     drawBlock(batch, gridOffsetX + col * CELL_SIZE, gridOffsetY + row * CELL_SIZE,
-                        CELL_SIZE, ColorMapper.getColor(colorCode));
+                        CELL_SIZE, ColorMapper.getColor(colorCode), row, col, false);
                 }
             }
         }
 
-        // Рисуване на падащия блок
+        // Рисуване на падащия блок (използваме visualFallingY за правилна позиция)
         for (int i = 0; i < 3; i++) {
-            if (fallingBlock.getFallingRow() - i >= 0) {
+            float visualY = visualFallingY - i;
+            if (visualY >= 0) {
                 drawBlock(batch, gridOffsetX + fallingBlock.getFallingCol() * CELL_SIZE,
-                    gridOffsetY + (fallingBlock.getFallingRow() - i) * CELL_SIZE,
-                    CELL_SIZE, ColorMapper.getColor(fallingBlock.getFallingColors()[i]));
+                    gridOffsetY + visualY * CELL_SIZE,
+                    CELL_SIZE, ColorMapper.getColor(fallingBlock.getFallingColors()[i]), (int)visualY, fallingBlock.getFallingCol(), true);
             }
         }
 
@@ -142,7 +157,9 @@ public class GameRenderer {
         float nextBlockY = gridOffsetY + (GameConstants.ROWS - 2) * CELL_SIZE;
         for (int i = 0; i < 3; i++) {
             float y = nextBlockY - i * CELL_SIZE;
-            drawBlock(batch, previewX, y, CELL_SIZE, ColorMapper.getColor(fallingBlock.getNextColors()[i]));
+            // Използваме специални индекси за preview блоковете
+            drawBlock(batch, previewX, y, CELL_SIZE, ColorMapper.getColor(fallingBlock.getNextColors()[i]), 
+                GameConstants.ROWS + i, GameConstants.COLS + 1, false);
         }
 
 

@@ -267,7 +267,8 @@ public class GameScreen implements Screen, InputProcessor {
                 gridManager.getGrid(), fallingBlock,
                 particles, matchMarkers,
                 score, level, currentDropInterval,
-                levelUpTimer, isGameOver, gameOverTimer);
+                levelUpTimer, isGameOver, gameOverTimer,
+                visualFallingY);
 
             gameOverTimer -= delta;
 
@@ -359,7 +360,8 @@ public class GameScreen implements Screen, InputProcessor {
             gridManager.getGrid(), fallingBlock,
             particles, matchMarkers,
             score, level, currentDropInterval,
-            levelUpTimer, isGameOver, gameOverTimer);
+            levelUpTimer, isGameOver, gameOverTimer,
+            visualFallingY);
 
         if (levelUpTimer > 0) {
             levelUpTimer -= delta;
