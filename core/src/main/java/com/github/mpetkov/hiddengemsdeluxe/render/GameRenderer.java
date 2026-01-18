@@ -52,7 +52,7 @@ public class GameRenderer {
         }
     }
 
-    // 💎 Рисува блока с пулсиращ ефект
+    // 💎 Рисува блока с текстура и 3D ефекти (запазва оригиналния дизайн на block.png)
     private static void drawBlock(SpriteBatch batch, float x, float y, int CELL_SIZE, Color baseColor, int row, int col, boolean isFalling) {
         if (blockTexture == null) return;
 
@@ -64,10 +64,13 @@ public class GameRenderer {
         float size = CELL_SIZE * pulseScale;
         float offsetX = (CELL_SIZE - size) / 2f;
         float offsetY = (CELL_SIZE - size) / 2f;
-
-        // Основен блок с текстура
+        
+        float gemX = x + offsetX;
+        float gemY = y + offsetY;
+        
+        // === Основна текстура с цветен филтър ===
         batch.setColor(baseColor);
-        batch.draw(blockTexture, x + offsetX, y + offsetY, size, size);
+        batch.draw(blockTexture, gemX, gemY, size, size);
         batch.setColor(Color.WHITE);
     }
 
@@ -128,10 +131,10 @@ public class GameRenderer {
         shapeRenderer.end();
 
         // ----------------------------------------------------------------------------------
-        // === II. SpriteBatch (За БЛОКОВЕ и ТЕКСТ) ===
+        // === II. SpriteBatch (За БЛОКОВЕ с 3D ефекти и ТЕКСТ) ===
         batch.begin();
 
-        // Рисуване на блоковете в мрежата
+        // Рисуване на блоковете в мрежата (с текстура и 3D ефекти)
         for (int row = 0; row < GameConstants.ROWS; row++) {
             for (int col = 0; col < GameConstants.COLS; col++) {
                 int colorCode = grid[row][col];
