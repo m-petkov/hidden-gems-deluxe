@@ -255,6 +255,47 @@ public class GameScreen implements Screen, InputProcessor {
         Gdx.gl.glClearColor(0f, 0f, 0f, 1f);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
+        // Check for game over early and skip all game logic
+        if (isGameOver) {
+            // Only update background and render game over text
+            background.update(delta);
+            background.render(shapeRenderer);
+            
+            // Render the last frame of the game
+            GameRenderer.renderGame(shapeRenderer, batch, font,
+                gridOffsetX, gridOffsetY, CELL_SIZE,
+                gridManager.getGrid(), fallingBlock,
+                particles, matchMarkers,
+                score, level, currentDropInterval,
+                levelUpTimer, isGameOver, gameOverTimer);
+
+            gameOverTimer -= delta;
+
+            String gameOverText = "GAME OVER!";
+            float alpha = Math.min(1f, gameOverTimer);
+            float scale = 1f + 0.3f * (float)Math.sin((3f - gameOverTimer) * Math.PI);
+
+            font.getData().setScale(scale);
+            GlyphLayout gameOverLayout = new GlyphLayout(font, gameOverText);
+
+            float centerX = gridOffsetX + (GameConstants.COLS * CELL_SIZE - gameOverLayout.width) / 2f;
+            float centerY = gridOffsetY + (GameConstants.ROWS * CELL_SIZE + gameOverLayout.height) / 2f;
+
+            batch.begin();
+            font.setColor(1f, 0.4f, 0.4f, alpha);
+            font.draw(batch, gameOverText, centerX, centerY);
+            batch.end();
+            font.getData().setScale(1f);
+
+            if (gameOverTimer <= 0f) {
+                SaveManager.saveScore(score, level);
+                dispose();
+                game.setScreen(new WelcomeScreen(game));
+            }
+            return;
+        }
+
+        // Normal game logic continues here
         background.update(delta);
         background.render(shapeRenderer);
 
@@ -323,33 +364,6 @@ public class GameScreen implements Screen, InputProcessor {
         if (levelUpTimer > 0) {
             levelUpTimer -= delta;
             if (levelUpTimer < 0) levelUpTimer = 0;
-        }
-
-        if (isGameOver) {
-            gameOverTimer -= delta;
-
-            String gameOverText = "GAME OVER!";
-            float alpha = Math.min(1f, gameOverTimer);
-            float scale = 1f + 0.3f * (float)Math.sin((3f - gameOverTimer) * Math.PI);
-
-            font.getData().setScale(scale);
-            GlyphLayout gameOverLayout = new GlyphLayout(font, gameOverText);
-
-            float centerX = gridOffsetX + (GameConstants.COLS * CELL_SIZE - gameOverLayout.width) / 2f;
-            float centerY = gridOffsetY + (GameConstants.ROWS * CELL_SIZE + gameOverLayout.height) / 2f;
-
-            batch.begin();
-            font.setColor(1f, 0.4f, 0.4f, alpha);
-            font.draw(batch, gameOverText, centerX, centerY);
-            batch.end();
-            font.getData().setScale(1f);
-
-            if (gameOverTimer <= 0f) {
-                SaveManager.saveScore(score, level);
-                dispose();
-                game.setScreen(new WelcomeScreen(game));
-            }
-            return;
         }
     }
 
