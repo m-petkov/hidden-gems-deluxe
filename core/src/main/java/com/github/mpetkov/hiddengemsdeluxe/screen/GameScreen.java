@@ -304,10 +304,13 @@ public class GameScreen implements Screen, InputProcessor {
         if (!isAnimating && !isProcessingMatches && !isGameOver &&
             Gdx.input.isKeyPressed(Input.Keys.DOWN) && hardDropCooldown <= 0f) {
 
-            isHardDropping = true;
-            animationProgress = 0f;
-            isAnimating = true;
-            hardDropCooldown = 0.2f; // 200 милисекунди между хард падове
+            if (fallingBlock.canRise()) {
+                fallingBlock.moveDown();
+                isHardDropping = true;
+                animationProgress = 0f;
+                isAnimating = true;
+                hardDropCooldown = 0.2f; // 200 ms between hard drops
+            }
         }
 
         if (isAnimating) {
