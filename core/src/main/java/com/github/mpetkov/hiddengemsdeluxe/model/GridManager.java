@@ -1,7 +1,6 @@
 package com.github.mpetkov.hiddengemsdeluxe.model;
 import com.github.mpetkov.hiddengemsdeluxe.model.GridManager;
 
-import com.github.mpetkov.hiddengemsdeluxe.screen.GameScreen;
 
 import java.util.Arrays;
 

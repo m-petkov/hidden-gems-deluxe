@@ -1,5 +1,4 @@
 package com.github.mpetkov.hiddengemsdeluxe.model;
-import com.github.mpetkov.hiddengemsdeluxe.model.GridManager;
 
 import com.github.mpetkov.hiddengemsdeluxe.util.GameConstants;
 
