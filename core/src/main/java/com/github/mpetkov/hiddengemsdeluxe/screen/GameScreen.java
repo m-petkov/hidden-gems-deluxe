@@ -71,7 +71,8 @@ public class GameScreen implements Screen, InputProcessor {
 
     private boolean isHardDropping = false;
 
-    private float hardDropCooldown = 0f;
+    /** Само едно ускорение надолу на натискане; след отпускане отново се приема. */
+    private boolean downKeyReleased = true;
 
     public GameScreen(GameApp game) {
         this.game = game;
@@ -332,19 +333,6 @@ public class GameScreen implements Screen, InputProcessor {
         // Подготовка на 3D рендера за този кадър
         Gem3DRenderer.beginFrame();
 
-        hardDropCooldown -= delta;
-        if (!isAnimating && !isProcessingMatches && !isGameOver &&
-            Gdx.input.isKeyPressed(Input.Keys.DOWN) && hardDropCooldown <= 0f) {
-
-            if (fallingBlock.canRise()) {
-                fallingBlock.moveDown();
-                isHardDropping = true;
-                animationProgress = 0f;
-                isAnimating = true;
-                hardDropCooldown = 0.2f; // 200 ms between hard drops
-            }
-        }
-
         if (isAnimating) {
             float speed = isHardDropping ? 20f : 5f;
             animationProgress += delta * speed;
@@ -476,6 +464,13 @@ public class GameScreen implements Screen, InputProcessor {
             fallingBlock.moveHorizontal(1);
         } else if (keycode == Input.Keys.UP) {
             fallingBlock.rotateBlock();
+        } else if (keycode == Input.Keys.DOWN && downKeyReleased && !isAnimating && !isProcessingMatches
+            && fallingBlock.canRise()) {
+            downKeyReleased = false;
+            fallingBlock.moveDown();
+            isHardDropping = true;
+            animationProgress = 0f;
+            isAnimating = true;
         }
 
         return true;
@@ -484,6 +479,7 @@ public class GameScreen implements Screen, InputProcessor {
     @Override
     public boolean keyUp(int keycode) {
         if (keycode == Input.Keys.DOWN) {
+            downKeyReleased = true;
             scheduleDrop(getDropIntervalForLevel(level));
         }
         return true;
