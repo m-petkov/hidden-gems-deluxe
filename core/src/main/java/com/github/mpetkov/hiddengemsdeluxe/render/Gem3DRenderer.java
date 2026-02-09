@@ -20,6 +20,7 @@ import com.badlogic.gdx.graphics.Mesh;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.VertexAttribute;
+import com.badlogic.gdx.graphics.VertexAttributes;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.Array;
 
@@ -92,16 +93,28 @@ public class Gem3DRenderer {
         return texture;
     }
 
-    private static final float INV_SQ3 = 0.57735027f; // 1/sqrt(3)
+    private static final float INV_SQ3 = 0.57735027f;
 
-    /**
-     * Създава истински 3D камък – октаедър (две пирамиди с основа до основа), както при
-     * класически диамантен разрез. При въртене се виждат реални ръбове и фасети.
-     */
+    /** По-„анимационна” форма: леко разчупен октаедър (по-висок, по-мек контур). */
+    private static final float GEM_SCALE_Y = 1.08f;
+    private static final float GEM_SCALE_XZ = 0.94f;
+    /** Малко издуване по нормалата за по-жив вид (без идеална геометрия). */
+    private static final float GEM_BULGE = 0.018f;
+
+    /** Посока на „осветление” за различен нюанс по стените (нормализована). */
+    private static final float LIGHT_X = 0.4f;
+    private static final float LIGHT_Y = 0.7f;
+    private static final float LIGHT_Z = 0.5f;
+    private static final float LIGHT_LEN = (float) Math.sqrt(LIGHT_X * LIGHT_X + LIGHT_Y * LIGHT_Y + LIGHT_Z * LIGHT_Z);
+
+    /** Октаедър с per-vertex цвят – всяка страна различен нюанс (по-реалистично). */
     private static Model createOctahedronGemModel(Material material) {
         float t = INV_SQ3;
-        float s = 0.5f; // мащаб за побиране в клетка (като предишния ромб)
-        float[] v = new float[24 * 8];
+        float lx = LIGHT_X / LIGHT_LEN;
+        float ly = LIGHT_Y / LIGHT_LEN;
+        float lz = LIGHT_Z / LIGHT_LEN;
+        float s = 0.5f;
+        float[] v = new float[24 * 9]; // +1 за ColorPacked на връх
         int idx = 0;
         float[][] tris = new float[][] {
             { 0,1,0, 0,0,1, 1,0,0,  t,t,t },
@@ -115,41 +128,61 @@ public class Gem3DRenderer {
         };
         for (float[] tri : tris) {
             float nx = tri[9], ny = tri[10], nz = tri[11];
+            float dot = nx * lx + ny * ly + nz * lz;
+            float shade = 0.32f + 0.68f * Math.max(0f, dot);
+            float colorPacked = Color.toFloatBits(shade, shade, shade, 1f);
             for (int i = 0; i < 3; i++) {
-                v[idx++] = tri[i*3] * s; v[idx++] = tri[i*3+1] * s; v[idx++] = tri[i*3+2] * s;
-                v[idx++] = nx; v[idx++] = ny; v[idx++] = nz;
-                v[idx++] = 0.45f; v[idx++] = 0.5f;
+                float px = tri[i*3] * s;
+                float py = tri[i*3+1] * s;
+                float pz = tri[i*3+2] * s;
+                px *= GEM_SCALE_XZ;
+                py *= GEM_SCALE_Y;
+                pz *= GEM_SCALE_XZ;
+                int vi = idx / 9;
+                float bulge = GEM_BULGE * (float) Math.sin(vi * 1.3);
+                px += nx * bulge;
+                py += ny * bulge;
+                pz += nz * bulge;
+                v[idx++] = px;
+                v[idx++] = py;
+                v[idx++] = pz;
+                v[idx++] = nx;
+                v[idx++] = ny;
+                v[idx++] = nz;
+                v[idx++] = 0.45f;
+                v[idx++] = 0.5f;
+                v[idx++] = colorPacked;
             }
         }
         short[] indices = new short[24];
         for (short i = 0; i < 24; i++) indices[i] = i;
-
         Mesh mesh = new Mesh(true, 24, 24,
-                VertexAttribute.Position(), VertexAttribute.Normal(), VertexAttribute.TexCoords(0));
+                VertexAttribute.Position(), VertexAttribute.Normal(), VertexAttribute.TexCoords(0),
+                new VertexAttribute(VertexAttributes.Usage.ColorPacked, 4, "a_color"));
         mesh.setVertices(v);
         mesh.setIndices(indices);
-
-        ModelBuilder modelBuilder = new ModelBuilder();
-        modelBuilder.begin();
-        modelBuilder.part("gem", mesh, GL20.GL_TRIANGLES, material);
-        return modelBuilder.end();
+        ModelBuilder mb = new ModelBuilder();
+        mb.begin();
+        mb.part("gem", mesh, GL20.GL_TRIANGLES, material);
+        return mb.end();
     }
 
-    /**
-     * Създава модел само с ръбовете на октаедъра (12 линии) за черен контур по ръбовете –
-     * без „раздуто” копие, няма сенки по стените.
-     */
+    /** 12 ръба на октаедъра – същата „разчупена” форма като камъка. */
     private static Model createOctahedronEdgeLinesModel(Material material) {
         float s = 0.5f;
         float[] verts = new float[] {
-            0, s, 0,    0, 0, s,    s, 0, 0,    0, 0, -s,   -s, 0, 0,    0, -s, 0
+            0, s * GEM_SCALE_Y, 0,
+            0, 0, s * GEM_SCALE_XZ,
+            s * GEM_SCALE_XZ, 0, 0,
+            0, 0, -s * GEM_SCALE_XZ,
+            -s * GEM_SCALE_XZ, 0, 0,
+            0, -s * GEM_SCALE_Y, 0
         };
         int[] edges = new int[] {
             0, 1,  0, 2,  0, 3,  0, 4,
             5, 1,  5, 2,  5, 3,  5, 4,
             1, 2,  2, 3,  3, 4,  4, 1
         };
-        // Position + Normal (шейдърът очаква нормал; за линии ползваме 0,1,0)
         float[] vertices = new float[24 * 6];
         short[] indices = new short[24];
         for (int i = 0; i < 24; i++) {
@@ -192,9 +225,9 @@ public class Gem3DRenderer {
 
             gemModel = createOctahedronGemModel(material);
 
-            // Черни линии по ръбовете на октаедъра – стабилен контур, без сенки по стените
+            // Контур по ръбовете (12 ръба при октаедър – стабилен, без wireframe)
             Material edgeMaterial = new Material(
-                    ColorAttribute.createDiffuse(0.22f, 0.24f, 0.28f, 1f)  // по-мек сив контур
+                    ColorAttribute.createDiffuse(0.22f, 0.24f, 0.28f, 1f)
             );
             edgeLinesModel = createOctahedronEdgeLinesModel(edgeMaterial);
 
@@ -265,7 +298,6 @@ public class Gem3DRenderer {
 
         float uniformScale = size * 0.9f;
 
-        // 1. Цветният камък
         ModelInstance instance = new ModelInstance(gemModel);
         instance.transform.idt();
         instance.transform.setToTranslation(centerX, centerY, 0f);
@@ -274,13 +306,18 @@ public class Gem3DRenderer {
         instance.transform.rotate(Vector3.Y, rotationAngleDeg);
 
         Material mat = instance.materials.first();
+        // По-светъл дифузен нюанс – същите основни цветове, но по-живи
         ColorAttribute diffuse = (ColorAttribute) mat.get(ColorAttribute.Diffuse);
         if (diffuse != null) {
-            diffuse.color.set(baseColor.cpy().lerp(Color.BLACK, 0.12f));  // един нюанс по-тъмни камъни
+            diffuse.color.set(baseColor.cpy().lerp(Color.WHITE, 0.2f));
+        }
+        // Отблясъкът по фасетите в тона на камъка (червен камък = топъл отблясък, син = студен и т.н.)
+        ColorAttribute specular = (ColorAttribute) mat.get(ColorAttribute.Specular);
+        if (specular != null) {
+            specular.color.set(baseColor.cpy().lerp(Color.WHITE, 0.6f));
         }
         instances.add(instance);
 
-        // 2. Черни линии по ръбовете (същата трансформация)
         ModelInstance edgeInstance = new ModelInstance(edgeLinesModel);
         edgeInstance.transform.set(instance.transform);
         edgeInstances.add(edgeInstance);
