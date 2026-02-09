@@ -9,15 +9,13 @@ public class FallingBlock {
     private int fallingCol;
     private int[] fallingColors;
     private int[] nextColors;
-    private Random random;
     private GridManager gridManager;
 
-    public FallingBlock(Random random, GridManager gridManager, int[] initialNextColors) {
-        this.random = random;
+    public FallingBlock(Random random, GridManager gridManager, int[] initialNextColors, int colorCount) {
         this.gridManager = gridManager;
         this.fallingColors = new int[3];
         this.nextColors = initialNextColors;
-        generateNewBlock(random);
+        generateNewBlock(random, colorCount);
     }
 
     public int getFallingRow() {
@@ -36,12 +34,15 @@ public class FallingBlock {
         return nextColors;
     }
 
-    public void generateNewBlock(Random random) {
+    /**
+     * Генерира нов падащ блок. colorCount е брой цветове (4 до ниво 11, 5 от ниво 12 с розов).
+     */
+    public void generateNewBlock(Random random, int colorCount) {
         System.arraycopy(nextColors, 0, fallingColors, 0, 3);
         fallingRow = GameConstants.ROWS - 1;
         fallingCol = 2 + random.nextInt(2);
         for (int i = 0; i < 3; i++) {
-            nextColors[i] = random.nextInt(4);
+            nextColors[i] = random.nextInt(colorCount);
         }
     }
 

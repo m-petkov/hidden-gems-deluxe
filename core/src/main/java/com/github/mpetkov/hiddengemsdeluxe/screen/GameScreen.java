@@ -61,6 +61,8 @@ public class GameScreen implements Screen, InputProcessor {
     private float currentDropInterval;
     private int level;
     private float levelUpTimer;
+    /** Показва съобщението "Level 12 is reached, pink gems enabled" при достигане на ниво 12. */
+    private float pinkEnabledMessageTimer;
 
     private boolean isGameOver;
     private float gameOverTimer;
@@ -88,6 +90,9 @@ public class GameScreen implements Screen, InputProcessor {
         int newLevel = (score / 10) + 1;
         if (newLevel > level) {
             level = newLevel;
+            if (level == 12) {
+                pinkEnabledMessageTimer = 2.5f;
+            }
             float interval = getDropIntervalForLevel(level);
             if (interval < currentDropInterval) {
                 currentDropInterval = interval;
@@ -143,8 +148,8 @@ public class GameScreen implements Screen, InputProcessor {
         gridManager = new GridManager(GameConstants.ROWS, GameConstants.COLS);
 
         int[] initialNextColors = new int[3];
-        for (int i = 0; i < 3; i++) initialNextColors[i] = random.nextInt(4);
-        fallingBlock = new FallingBlock(random, gridManager, initialNextColors);
+        for (int i = 0; i < 3; i++) initialNextColors[i] = random.nextInt(ColorMapper.BASE_COLOR_COUNT);
+        fallingBlock = new FallingBlock(random, gridManager, initialNextColors, ColorMapper.BASE_COLOR_COUNT);
 
         generateNewFallingColumn();
 
@@ -243,7 +248,8 @@ public class GameScreen implements Screen, InputProcessor {
     }
 
     private void generateNewFallingColumn() {
-        fallingBlock.generateNewBlock(random);
+        int colorCount = level >= 12 ? ColorMapper.FULL_COLOR_COUNT : ColorMapper.BASE_COLOR_COUNT;
+        fallingBlock.generateNewBlock(random, colorCount);
         for (int i = 0; i < 3; i++) {
             int row = fallingBlock.getFallingRow() - i;
             if (row >= 0 && row < GameConstants.ROWS && gridManager.getGridCell(row, fallingBlock.getFallingCol()) != -1) {
@@ -428,9 +434,48 @@ public class GameScreen implements Screen, InputProcessor {
             batch.end();
         }
 
+        // Съобщение при достигане на ниво 12 – розовите камъни са активирани
+        if (pinkEnabledMessageTimer > 0f) {
+            String pinkText = "Level 12 is reached, pink gems enabled";
+            float alpha = Math.min(1f, pinkEnabledMessageTimer);
+            float scale = 0.85f;
+
+            font.getData().setScale(scale);
+            GlyphLayout pinkLayout = new GlyphLayout(font, pinkText);
+            font.getData().setScale(1f);
+
+            float gridCenterX = gridOffsetX + (GameConstants.COLS * CELL_SIZE) / 2f;
+            float gridCenterY = gridOffsetY + (GameConstants.ROWS * CELL_SIZE) / 2f;
+            float pad = 20f;
+            float boxW = pinkLayout.width + pad * 2f;
+            float boxH = pinkLayout.height + pad * 2f;
+            float boxX = gridCenterX - boxW / 2f;
+            float boxY = gridCenterY - boxH / 2f - 50f;
+
+            shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+            shapeRenderer.setColor(0.12f, 0.06f, 0.10f, 0.9f * alpha);
+            shapeRenderer.rect(boxX, boxY, boxW, boxH);
+            shapeRenderer.end();
+
+            batch.begin();
+            font.getData().setScale(scale);
+            float textX = gridCenterX - pinkLayout.width / 2f;
+            float textY = gridCenterY + pinkLayout.height / 2f - 50f;
+            font.setColor(0.2f, 0.1f, 0.15f, alpha);
+            font.draw(batch, pinkText, textX + 2, textY - 2);
+            font.setColor(ColorMapper.PINK.r, ColorMapper.PINK.g, ColorMapper.PINK.b, alpha);
+            font.draw(batch, pinkText, textX, textY);
+            font.getData().setScale(1f);
+            batch.end();
+        }
+
         if (levelUpTimer > 0) {
             levelUpTimer -= delta;
             if (levelUpTimer < 0) levelUpTimer = 0;
+        }
+        if (pinkEnabledMessageTimer > 0) {
+            pinkEnabledMessageTimer -= delta;
+            if (pinkEnabledMessageTimer < 0) pinkEnabledMessageTimer = 0;
         }
     }
 
