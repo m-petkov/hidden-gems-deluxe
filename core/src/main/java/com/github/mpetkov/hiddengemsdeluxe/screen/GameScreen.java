@@ -7,6 +7,7 @@ import com.github.mpetkov.hiddengemsdeluxe.model.MatchMarker;
 import com.github.mpetkov.hiddengemsdeluxe.model.Particle;
 import com.github.mpetkov.hiddengemsdeluxe.render.AnimatedBackground;
 import com.github.mpetkov.hiddengemsdeluxe.render.GameRenderer;
+import com.github.mpetkov.hiddengemsdeluxe.render.Gem3DRenderer;
 import com.github.mpetkov.hiddengemsdeluxe.util.ColorMapper;
 import com.github.mpetkov.hiddengemsdeluxe.util.GameConstants;
 
@@ -105,7 +106,7 @@ public class GameScreen implements Screen, InputProcessor {
         shapeRenderer = new ShapeRenderer();
         batch = new SpriteBatch();
 
-        // ✅ КОРЕКЦИЯ 1: Инициализация на GameRenderer (зареждане на текстурата)
+        // ✅ КОРЕКЦИЯ 1: Инициализация на GameRenderer (зареждане на текстурата / 3D моделите)
         GameRenderer.initialize();
 
         background = new AnimatedBackground(100);
@@ -253,7 +254,8 @@ public class GameScreen implements Screen, InputProcessor {
     @Override
     public void render(float delta) {
         Gdx.gl.glClearColor(0f, 0f, 0f, 1f);
-        Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
+        // Clear both color and depth so 3D gems render correctly.
+        Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT | GL20.GL_DEPTH_BUFFER_BIT);
 
         // Check for game over early and skip all game logic
         if (isGameOver) {
@@ -299,6 +301,9 @@ public class GameScreen implements Screen, InputProcessor {
         // Normal game logic continues here
         background.update(delta);
         background.render(shapeRenderer);
+
+        // Подготовка на 3D рендера за този кадър
+        Gem3DRenderer.beginFrame();
 
         hardDropCooldown -= delta;
         if (!isAnimating && !isProcessingMatches && !isGameOver &&
@@ -366,6 +371,9 @@ public class GameScreen implements Screen, InputProcessor {
             levelUpTimer, isGameOver, gameOverTimer,
             visualFallingY);
 
+        // Рисуване на всички 3D камъни върху фона
+        Gem3DRenderer.renderAll();
+
         if (levelUpTimer > 0) {
             levelUpTimer -= delta;
             if (levelUpTimer < 0) levelUpTimer = 0;
@@ -422,7 +430,10 @@ public class GameScreen implements Screen, InputProcessor {
     @Override public boolean mouseMoved(int screenX, int screenY) { return false; }
     @Override public boolean scrolled(float amountX, float amountY) { return false; }
 
-    @Override public void resize(int width, int height) {}
+    @Override
+    public void resize(int width, int height) {
+        Gem3DRenderer.resize(width, height);
+    }
     @Override public void pause() {}
     @Override public void resume() {}
     @Override public void hide() {}

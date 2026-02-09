@@ -20,6 +20,11 @@ import java.util.List;
 
 public class GameRenderer {
 
+    // Toggle to enable the 3D gem rendering instead of the flat block texture.
+    private static final boolean USE_3D_GEMS = true;
+    // Runtime flag that falls back to 2D if 3D init fails.
+    private static boolean use3DGemsRuntime = false;
+
     // 🔹 За анимацията на неоновия контур
     private static float neonTime = 0f;
     
@@ -42,6 +47,17 @@ public class GameRenderer {
         } catch (Exception e) {
             Gdx.app.error("GameRenderer", "Грешка при зареждане на block.png. Уверете се, че файлът е в 'assets/': " + e.getMessage());
         }
+
+        // Инициализация на 3D рендера за камъните (отделно, за да не скриваме грешки)
+        use3DGemsRuntime = false;
+        if (USE_3D_GEMS) {
+            Gem3DRenderer.initialize();
+            if (Gem3DRenderer.isInitialized()) {
+                use3DGemsRuntime = true;
+            } else {
+                Gdx.app.log("GameRenderer", "3D gems not initialized, falling back to 2D sprites.");
+            }
+        }
     }
 
     // 💡 МЕТОД: Освобождаване на ресурса
@@ -50,28 +66,46 @@ public class GameRenderer {
             blockTexture.dispose();
             blockTexture = null;
         }
+        if (use3DGemsRuntime) {
+            Gem3DRenderer.dispose();
+        }
     }
 
     // 💎 Рисува блока с текстура и 3D ефекти (запазва оригиналния дизайн на block.png)
     private static void drawBlock(SpriteBatch batch, float x, float y, int CELL_SIZE, Color baseColor, int row, int col, boolean isFalling) {
-        if (blockTexture == null) return;
+        if (use3DGemsRuntime) {
+            // Уникално време за анимация базирано на позицията
+            float uniqueTime = gemAnimationTime + (row * 0.3f) + (col * 0.2f);
 
-        // Уникално време за анимация базирано на позицията
-        float uniqueTime = gemAnimationTime + (row * 0.3f) + (col * 0.2f);
-        
-        // Пулсиращ ефект (много субтилен)
-        float pulseScale = 1f + 0.03f * MathUtils.sin(uniqueTime * 2f);
-        float size = CELL_SIZE * pulseScale;
-        float offsetX = (CELL_SIZE - size) / 2f;
-        float offsetY = (CELL_SIZE - size) / 2f;
-        
-        float gemX = x + offsetX;
-        float gemY = y + offsetY;
-        
-        // === Основна текстура с цветен филтър ===
-        batch.setColor(baseColor);
-        batch.draw(blockTexture, gemX, gemY, size, size);
-        batch.setColor(Color.WHITE);
+            // Леко пулсиране на скала за "жив" ефект
+            float pulseScale = 1f + 0.04f * MathUtils.sin(uniqueTime * 2f);
+            float size = CELL_SIZE * pulseScale;
+
+            // Центърът на клетката
+            float centerX = x + CELL_SIZE / 2f;
+            float centerY = y + CELL_SIZE / 2f;
+
+            Gem3DRenderer.addGem(centerX, centerY, size, baseColor);
+        } else {
+            if (blockTexture == null) return;
+
+            // Уникално време за анимация базирано на позицията
+            float uniqueTime = gemAnimationTime + (row * 0.3f) + (col * 0.2f);
+
+            // Пулсиращ ефект (много субтилен)
+            float pulseScale = 1f + 0.03f * MathUtils.sin(uniqueTime * 2f);
+            float size = CELL_SIZE * pulseScale;
+            float offsetX = (CELL_SIZE - size) / 2f;
+            float offsetY = (CELL_SIZE - size) / 2f;
+
+            float gemX = x + offsetX;
+            float gemY = y + offsetY;
+
+            // === Основна текстура с цветен филтър ===
+            batch.setColor(baseColor);
+            batch.draw(blockTexture, gemX, gemY, size, size);
+            batch.setColor(Color.WHITE);
+        }
     }
 
     public static void renderGame(ShapeRenderer shapeRenderer, SpriteBatch batch, BitmapFont font,
@@ -131,42 +165,67 @@ public class GameRenderer {
         shapeRenderer.end();
 
         // ----------------------------------------------------------------------------------
-        // === II. SpriteBatch (За БЛОКОВЕ с 3D ефекти и ТЕКСТ) ===
-        batch.begin();
+        // === II. Рисуване на блоковете / 3D камъните ===
+        if (!use3DGemsRuntime) {
+            // 2D текстурирани блокове
+            batch.begin();
 
-        // Рисуване на блоковете в мрежата (с текстура и 3D ефекти)
-        for (int row = 0; row < GameConstants.ROWS; row++) {
-            for (int col = 0; col < GameConstants.COLS; col++) {
-                int colorCode = grid[row][col];
-                if (colorCode != -1) {
-                    drawBlock(batch, gridOffsetX + col * CELL_SIZE, gridOffsetY + row * CELL_SIZE,
-                        CELL_SIZE, ColorMapper.getColor(colorCode), row, col, false);
+            for (int row = 0; row < GameConstants.ROWS; row++) {
+                for (int col = 0; col < GameConstants.COLS; col++) {
+                    int colorCode = grid[row][col];
+                    if (colorCode != -1) {
+                        drawBlock(batch, gridOffsetX + col * CELL_SIZE, gridOffsetY + row * CELL_SIZE,
+                            CELL_SIZE, ColorMapper.getColor(colorCode), row, col, false);
+                    }
+                }
+            }
+
+            for (int i = 0; i < 3; i++) {
+                float visualY = visualFallingY - i;
+                if (visualY >= 0) {
+                    drawBlock(batch, gridOffsetX + fallingBlock.getFallingCol() * CELL_SIZE,
+                        gridOffsetY + visualFallingY * CELL_SIZE - i * CELL_SIZE,
+                        CELL_SIZE, ColorMapper.getColor(fallingBlock.getFallingColors()[i]), (int)visualY, fallingBlock.getFallingCol(), true);
+                }
+            }
+        } else {
+            // Когато използваме 3D камъни, тук само подаваме координатите към Gem3DRenderer чрез drawBlock().
+            for (int row = 0; row < GameConstants.ROWS; row++) {
+                for (int col = 0; col < GameConstants.COLS; col++) {
+                    int colorCode = grid[row][col];
+                    if (colorCode != -1) {
+                        float x = gridOffsetX + col * CELL_SIZE;
+                        float y = gridOffsetY + row * CELL_SIZE;
+                        drawBlock(null, x, y, CELL_SIZE, ColorMapper.getColor(colorCode), row, col, false);
+                    }
+                }
+            }
+
+            for (int i = 0; i < 3; i++) {
+                float visualY = visualFallingY - i;
+                if (visualY >= 0) {
+                    float x = gridOffsetX + fallingBlock.getFallingCol() * CELL_SIZE;
+                    float y = gridOffsetY + visualY * CELL_SIZE;
+                    drawBlock(null, x, y, CELL_SIZE, ColorMapper.getColor(fallingBlock.getFallingColors()[i]),
+                        (int) visualY, fallingBlock.getFallingCol(), true);
                 }
             }
         }
 
-        // Рисуване на падащия блок (използваме visualFallingY за правилна позиция)
-        for (int i = 0; i < 3; i++) {
-            float visualY = visualFallingY - i;
-            if (visualY >= 0) {
-                drawBlock(batch, gridOffsetX + fallingBlock.getFallingCol() * CELL_SIZE,
-                    gridOffsetY + visualY * CELL_SIZE,
-                    CELL_SIZE, ColorMapper.getColor(fallingBlock.getFallingColors()[i]), (int)visualY, fallingBlock.getFallingCol(), true);
-            }
-        }
-
-        // "Next:" блок
+        // "Next:" блок (и при 2D, и при 3D – само позициите се подават)
         float previewX = gridOffsetX + GameConstants.COLS * CELL_SIZE + 40;
         float nextBlockY = gridOffsetY + (GameConstants.ROWS - 2) * CELL_SIZE;
         for (int i = 0; i < 3; i++) {
             float y = nextBlockY - i * CELL_SIZE;
-            // Използваме специални индекси за preview блоковете
             drawBlock(batch, previewX, y, CELL_SIZE, ColorMapper.getColor(fallingBlock.getNextColors()[i]), 
                 GameConstants.ROWS + i, GameConstants.COLS + 1, false);
         }
 
 
-        // === Текстова част ===
+        // === III. Текстова част ===
+        if (!batch.isDrawing()) {
+            batch.begin();
+        }
         // КОРЕКЦИЯ: Смяна на Color.ORANGE с Color.LIME
         final Color LIME_COLOR = Color.LIME;
 
@@ -233,7 +292,7 @@ public class GameRenderer {
         batch.end();
 
         // ----------------------------------------------------------------------------------
-        // === III. ShapeRenderer (Линии на мрежата и Неонова рамка) ===
+        // === IV. ShapeRenderer (Линии на мрежата и Неонова рамка) ===
 
         // Рисуване на линии на мрежата (ТЪНКИ ЛИНИИ) - Line ShapeType
         shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
