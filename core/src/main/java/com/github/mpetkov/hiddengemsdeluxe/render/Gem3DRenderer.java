@@ -14,6 +14,7 @@ import com.badlogic.gdx.graphics.g3d.attributes.FloatAttribute;
 import com.badlogic.gdx.graphics.g3d.attributes.TextureAttribute;
 import com.badlogic.gdx.graphics.g3d.environment.DirectionalLight;
 import com.badlogic.gdx.graphics.g3d.utils.ModelBuilder;
+import com.badlogic.gdx.graphics.g3d.utils.MeshPartBuilder;
 import com.badlogic.gdx.graphics.Camera;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Mesh;
@@ -22,7 +23,11 @@ import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.VertexAttribute;
 import com.badlogic.gdx.graphics.VertexAttributes;
 import com.badlogic.gdx.math.Vector3;
+import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.utils.Array;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * 3D renderer for the gem blocks.
@@ -35,6 +40,7 @@ public class Gem3DRenderer {
     private static ModelBatch modelBatch;
     private static Model gemModel;
     private static Model edgeLinesModel;
+    private static Model burstSphereModel;
     private static Texture blockTexture;
     private static Environment environment;
     private static Camera camera;
@@ -42,6 +48,18 @@ public class Gem3DRenderer {
     private static final Array<ModelInstance> instances = new Array<>();
     private static final Array<ModelInstance> edgeInstances = new Array<>();
     private static boolean initialized = false;
+
+    /** 3D burst effects (expanding sphere when gems are cleared). */
+    private static final List<BurstEffect> burstEffects = new ArrayList<>();
+    /** 3D shard particles (flying gem fragments on land/match). */
+    private static final List<ShardParticle> shardParticles = new ArrayList<>();
+
+    private static final float BURST_DURATION = 0.5f;
+    private static final float BURST_MAX_SCALE = 1.8f;
+    private static final float SHARD_LIFE = 0.55f;
+    private static final float SHARD_SPEED_MIN = 80f;
+    private static final float SHARD_SPEED_MAX = 160f;
+    private static final float SHARD_SIZE_SCALE = 0.22f;
 
     /** Текущ ъгъл на въртене (градуси) – всички камъни се въртят синхронно. */
     private static float rotationAngleDeg = 0f;
@@ -167,6 +185,49 @@ public class Gem3DRenderer {
         return mb.end();
     }
 
+    /** Ефект при неутрализиране: разширяваща се полупрозрачна сфера. */
+    private static class BurstEffect {
+        float x, y;
+        Color color;
+        float life;
+        final float maxLife;
+        ModelInstance instance;
+
+        BurstEffect(float x, float y, Color color, float maxLife) {
+            this.x = x;
+            this.y = y;
+            this.color = new Color(color);
+            this.life = maxLife;
+            this.maxLife = maxLife;
+            if (burstSphereModel != null) {
+                this.instance = new ModelInstance(burstSphereModel);
+            } else {
+                this.instance = null;
+            }
+        }
+    }
+
+    /** 3D осколка при допир/кацане или при изчистване на съвпадение. */
+    private static class ShardParticle {
+        float x, y;
+        float dx, dy;
+        float life;
+        final float initialLife;
+        Color color;
+        float rotSpeed;
+
+        ShardParticle(float x, float y, float dx, float dy, Color color, float life) {
+            this.x = x;
+            this.y = y;
+            this.dx = dx;
+            this.dy = dy;
+            this.color = new Color(color);
+            this.life = life;
+            this.initialLife = life;
+            this.rotSpeed = (MathUtils.random.nextFloat() - 0.5f) * 360f;
+        }
+    }
+
     /** 12 ръба на октаедъра – същата „разчупена” форма като камъка. */
     private static Model createOctahedronEdgeLinesModel(Material material) {
         float s = 0.5f;
@@ -231,6 +292,18 @@ public class Gem3DRenderer {
             );
             edgeLinesModel = createOctahedronEdgeLinesModel(edgeMaterial);
 
+            // Сфера за 3D burst ефект при неутрализиране (полупрозрачна)
+            Material burstMaterial = new Material(
+                    ColorAttribute.createDiffuse(1f, 1f, 1f, 0.85f),
+                    new BlendingAttribute(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA)
+            );
+            ModelBuilder mbBurst = new ModelBuilder();
+            mbBurst.begin();
+            MeshPartBuilder burstPart = mbBurst.part("burst", GL20.GL_TRIANGLES,
+                    VertexAttributes.Usage.Position | VertexAttributes.Usage.Normal, burstMaterial);
+            burstPart.sphere(1f, 1f, 1f, 16, 12);
+            burstSphereModel = mbBurst.end();
+
             // Осветление за „драгоценен” вид: по-ярка среда + няколко източника за отблески по фасетите
             environment = new Environment();
             environment.set(new ColorAttribute(ColorAttribute.AmbientLight, 0.55f, 0.58f, 0.65f, 1f));
@@ -286,6 +359,50 @@ public class Gem3DRenderer {
     }
 
     /**
+     * Добавя 3D burst ефект при неутрализиране на съвпадение (разширяваща се сфера).
+     */
+    public static void addBurstEffect(float centerX, float centerY, Color color) {
+        if (!initialized || burstSphereModel == null) return;
+        burstEffects.add(new BurstEffect(centerX, centerY, color, BURST_DURATION));
+    }
+
+    /**
+     * Добавя 3D осколки при допир (кацане) или при изчистване на камъни.
+     */
+    public static void addShardExplosion(float centerX, float centerY, Color color) {
+        if (!initialized || gemModel == null) return;
+        for (int i = 0; i < 12; i++) {
+            float angle = MathUtils.random.nextFloat() * MathUtils.PI2;
+            float speed = SHARD_SPEED_MIN + MathUtils.random.nextFloat() * (SHARD_SPEED_MAX - SHARD_SPEED_MIN);
+            float dx = MathUtils.cos(angle) * speed;
+            float dy = MathUtils.sin(angle) * speed;
+            shardParticles.add(new ShardParticle(centerX, centerY, dx, dy, color, SHARD_LIFE));
+        }
+    }
+
+    /**
+     * Обновява живота и позициите на 3D ефектите. Да се извиква от играта всеки кадър.
+     */
+    public static void updateEffects(float delta) {
+        for (int i = burstEffects.size() - 1; i >= 0; i--) {
+            BurstEffect b = burstEffects.get(i);
+            b.life -= delta;
+            if (b.life <= 0) {
+                burstEffects.remove(i);
+            }
+        }
+        for (int i = shardParticles.size() - 1; i >= 0; i--) {
+            ShardParticle s = shardParticles.get(i);
+            s.x += s.dx * delta;
+            s.y += s.dy * delta;
+            s.life -= delta;
+            if (s.life <= 0) {
+                shardParticles.remove(i);
+            }
+        }
+    }
+
+    /**
      * Queue a gem instance to be rendered this frame.
      *
      * @param centerX   screen/world X center of the gem (in pixels)
@@ -323,10 +440,9 @@ public class Gem3DRenderer {
         edgeInstances.add(edgeInstance);
     }
 
-    /** Render all queued gems. */
+    /** Render all queued gems and 3D effects. */
     public static void renderAll() {
         if (!initialized || modelBatch == null || camera == null) return;
-        if (instances.size == 0 && edgeInstances.size == 0) return;
 
         camera.update();
         modelBatch.begin(camera);
@@ -341,6 +457,59 @@ public class Gem3DRenderer {
             modelBatch.end();
             Gdx.gl.glLineWidth(1f);
         }
+
+        // 3D burst ефекти при неутрализиране
+        if (burstEffects.size() > 0) {
+            Array<ModelInstance> burstInstances = new Array<>();
+            for (BurstEffect b : burstEffects) {
+                if (b.instance == null) continue;
+                float t = 1f - b.life / b.maxLife;
+                float scale = t * BURST_MAX_SCALE * 25f;
+                float alpha = 1f - t;
+                b.instance.transform.idt();
+                b.instance.transform.setToTranslation(b.x, b.y, 0f);
+                b.instance.transform.scale(scale, scale, scale);
+                ColorAttribute diffuse = (ColorAttribute) b.instance.materials.first().get(ColorAttribute.Diffuse);
+                if (diffuse != null) {
+                    diffuse.color.set(b.color.r, b.color.g, b.color.b, alpha * 0.85f);
+                }
+                burstInstances.add(b.instance);
+            }
+            if (burstInstances.size > 0) {
+                modelBatch.begin(camera);
+                modelBatch.render(burstInstances, environment);
+                modelBatch.end();
+            }
+        }
+
+        // 3D осколки при допир/изчистване
+        if (shardParticles.size() > 0 && gemModel != null) {
+            Array<ModelInstance> shardInstances = new Array<>();
+            float shardBaseScale = 25f * SHARD_SIZE_SCALE;
+            for (ShardParticle s : shardParticles) {
+                float alpha = s.life / s.initialLife;
+                float scale = shardBaseScale * alpha;
+                ModelInstance shard = new ModelInstance(gemModel);
+                shard.transform.idt();
+                shard.transform.setToTranslation(s.x, s.y, 0f);
+                shard.transform.scale(scale, scale, scale);
+                shard.transform.rotate(Vector3.X, 22f);
+                shard.transform.rotate(Vector3.Y, rotationAngleDeg + s.rotSpeed * (1f - alpha));
+                Material mat = shard.materials.first();
+                ColorAttribute diffuse = (ColorAttribute) mat.get(ColorAttribute.Diffuse);
+                if (diffuse != null) {
+                    diffuse.color.set(s.color.r, s.color.g, s.color.b, alpha);
+                }
+                ColorAttribute specular = (ColorAttribute) mat.get(ColorAttribute.Specular);
+                if (specular != null) {
+                    specular.color.set(s.color.r, s.color.g, s.color.b, alpha);
+                }
+                shardInstances.add(shard);
+            }
+            modelBatch.begin(camera);
+            modelBatch.render(shardInstances, environment);
+            modelBatch.end();
+        }
     }
 
     public static void dispose() {
@@ -352,6 +521,10 @@ public class Gem3DRenderer {
             edgeLinesModel.dispose();
             edgeLinesModel = null;
         }
+        if (burstSphereModel != null) {
+            burstSphereModel.dispose();
+            burstSphereModel = null;
+        }
         if (modelBatch != null) {
             modelBatch.dispose();
             modelBatch = null;
@@ -360,6 +533,8 @@ public class Gem3DRenderer {
             blockTexture.dispose();
             blockTexture = null;
         }
+        burstEffects.clear();
+        shardParticles.clear();
         initialized = false;
     }
 

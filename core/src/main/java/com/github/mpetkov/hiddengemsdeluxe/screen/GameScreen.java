@@ -210,6 +210,9 @@ public class GameScreen implements Screen, InputProcessor {
                             if (toRemove[row][col]) {
                                 Color c = ColorMapper.getColor(gridManager.getGridCell(row, col));
                                 gridManager.setGridCell(row, col, -1);
+                                float cx = gridOffsetX + col * CELL_SIZE + CELL_SIZE / 2f;
+                                float cy = gridOffsetY + row * CELL_SIZE + CELL_SIZE / 2f;
+                                Gem3DRenderer.addBurstEffect(cx, cy, c);
                                 addParticles(col, row, c);
                             }
                         }
@@ -358,6 +361,8 @@ public class GameScreen implements Screen, InputProcessor {
             return p.life <= 0;
         });
 
+        Gem3DRenderer.updateEffects(delta);
+
         matchMarkers.removeIf(m -> {
             m.update(delta);
             return m.isExpired();
@@ -391,6 +396,7 @@ public class GameScreen implements Screen, InputProcessor {
             float dy = MathUtils.sin(angle) * speed;
             particles.add(new Particle(cx, cy, dx, dy, color));
         }
+        Gem3DRenderer.addShardExplosion(cx, cy, color);
     }
 
     @Override
