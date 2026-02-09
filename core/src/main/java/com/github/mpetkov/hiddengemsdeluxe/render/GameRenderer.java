@@ -270,25 +270,6 @@ public class GameRenderer {
         font.setColor(LIME_COLOR); // <--- Смяна
         font.draw(batch, levelDisplayText, levelX, levelY);
 
-        if (levelUpTimer > 0f) {
-            String levelText = "LEVEL UP!";
-            float alpha = Math.min(1f, levelUpTimer);
-            float scale = 1f + 0.3f * (float)Math.sin((2f - levelUpTimer) * Math.PI);
-
-            font.getData().setScale(scale);
-            GlyphLayout levelUpLayout = new GlyphLayout(font, levelText);
-
-            float gridCenterX = gridOffsetX + (GameConstants.COLS * CELL_SIZE) / 2f;
-            float gridCenterY = gridOffsetY + (GameConstants.ROWS * CELL_SIZE) / 2f;
-
-            float levelTextX = gridCenterX - levelUpLayout.width / 2f;
-            float levelTextY = gridCenterY + levelUpLayout.height / 2f;
-
-            font.setColor(1f, 0.8f, 0.2f, alpha);
-            font.draw(batch, levelText, levelTextX, levelTextY);
-
-            font.getData().setScale(1f);
-        }
         batch.end();
 
         // ----------------------------------------------------------------------------------

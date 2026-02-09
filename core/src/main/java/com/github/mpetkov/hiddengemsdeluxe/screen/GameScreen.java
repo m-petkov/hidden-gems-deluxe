@@ -277,21 +277,45 @@ public class GameScreen implements Screen, InputProcessor {
 
             gameOverTimer -= delta;
 
+            float gridW = GameConstants.COLS * CELL_SIZE;
+            float gridH = GameConstants.ROWS * CELL_SIZE;
+            float overlayAlpha = 0.72f * Math.min(1f, (3f - gameOverTimer) / 0.35f);
+
+            shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+            shapeRenderer.setColor(0.06f, 0.02f, 0.02f, overlayAlpha);
+            shapeRenderer.rect(gridOffsetX, gridOffsetY, gridW, gridH);
+            shapeRenderer.end();
+
             String gameOverText = "GAME OVER!";
             float alpha = Math.min(1f, gameOverTimer);
-            float scale = 1f + 0.3f * (float)Math.sin((3f - gameOverTimer) * Math.PI);
+            float scale = 1.15f;
 
             font.getData().setScale(scale);
             GlyphLayout gameOverLayout = new GlyphLayout(font, gameOverText);
+            font.getData().setScale(1f);
 
-            float centerX = gridOffsetX + (GameConstants.COLS * CELL_SIZE - gameOverLayout.width) / 2f;
-            float centerY = gridOffsetY + (GameConstants.ROWS * CELL_SIZE + gameOverLayout.height) / 2f;
+            float gridCenterX = gridOffsetX + gridW / 2f;
+            float gridCenterY = gridOffsetY + gridH / 2f;
+            float centerX = gridCenterX - gameOverLayout.width / 2f;
+            float centerY = gridCenterY + gameOverLayout.height / 2f;
 
             batch.begin();
-            font.setColor(1f, 0.4f, 0.4f, alpha);
+            font.getData().setScale(scale);
+            font.setColor(0.1f, 0.15f, 0.05f, alpha);
+            font.draw(batch, gameOverText, centerX + 2, centerY - 2);
+            font.setColor(Color.LIME.r, Color.LIME.g, Color.LIME.b, alpha);
             font.draw(batch, gameOverText, centerX, centerY);
-            batch.end();
+
+            String scoreLine = "Score: " + score;
+            font.getData().setScale(0.7f);
+            GlyphLayout scoreLayout = new GlyphLayout(font, scoreLine);
+            float sx = gridCenterX - scoreLayout.width / 2f;
+            float sy = gridCenterY - gameOverLayout.height - 18;
+            font.setColor(Color.LIME.r * 0.7f, Color.LIME.g * 0.7f, Color.LIME.b * 0.7f, alpha * 0.9f);
+            font.draw(batch, scoreLine, sx, sy);
+
             font.getData().setScale(1f);
+            batch.end();
 
             if (gameOverTimer <= 0f) {
                 SaveManager.saveScore(score, level);
@@ -378,6 +402,43 @@ public class GameScreen implements Screen, InputProcessor {
 
         // Рисуване на всички 3D камъни върху фона
         Gem3DRenderer.renderAll();
+
+        // Level Up над всичко (вкл. 3D камъните)
+        if (levelUpTimer > 0f) {
+            String levelText = "LEVEL UP!";
+            float alpha = Math.min(1f, levelUpTimer);
+            float scale = 1.15f;
+
+            font.getData().setScale(scale);
+            GlyphLayout levelUpLayout = new GlyphLayout(font, levelText);
+            font.getData().setScale(1f);
+
+            float gridCenterX = gridOffsetX + (GameConstants.COLS * CELL_SIZE) / 2f;
+            float gridCenterY = gridOffsetY + (GameConstants.ROWS * CELL_SIZE) / 2f;
+
+            float pad = 28f;
+            float boxW = levelUpLayout.width + pad * 2f;
+            float boxH = levelUpLayout.height + pad * 2f;
+            float boxX = gridCenterX - boxW / 2f;
+            float boxY = gridCenterY - boxH / 2f;
+
+            shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+            shapeRenderer.setColor(0.08f, 0.08f, 0.12f, 0.92f * alpha);
+            shapeRenderer.rect(boxX, boxY, boxW, boxH);
+            shapeRenderer.end();
+
+            batch.begin();
+            font.getData().setScale(scale);
+            float levelTextX = gridCenterX - levelUpLayout.width / 2f;
+            float levelTextY = gridCenterY + levelUpLayout.height / 2f;
+
+            font.setColor(0.1f, 0.15f, 0.05f, alpha);
+            font.draw(batch, levelText, levelTextX + 2, levelTextY - 2);
+            font.setColor(Color.LIME.r, Color.LIME.g, Color.LIME.b, alpha);
+            font.draw(batch, levelText, levelTextX, levelTextY);
+            font.getData().setScale(1f);
+            batch.end();
+        }
 
         if (levelUpTimer > 0) {
             levelUpTimer -= delta;
