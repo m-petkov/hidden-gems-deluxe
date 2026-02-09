@@ -276,7 +276,7 @@ public class Gem3DRenderer {
         Material mat = instance.materials.first();
         ColorAttribute diffuse = (ColorAttribute) mat.get(ColorAttribute.Diffuse);
         if (diffuse != null) {
-            diffuse.color.set(baseColor.cpy().lerp(Color.WHITE, 0.12f));
+            diffuse.color.set(baseColor.cpy().lerp(Color.BLACK, 0.12f));  // един нюанс по-тъмни камъни
         }
         instances.add(instance);
 
@@ -298,7 +298,7 @@ public class Gem3DRenderer {
 
         // Черни ръбове с леко по-дебели линии
         if (edgeInstances.size > 0) {
-            Gdx.gl.glLineWidth(1f);
+            Gdx.gl.glLineWidth(1.5f);
             modelBatch.begin(camera);
             modelBatch.render(edgeInstances, environment);
             modelBatch.end();
