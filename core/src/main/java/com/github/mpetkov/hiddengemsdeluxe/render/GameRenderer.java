@@ -136,10 +136,10 @@ public class GameRenderer {
         Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
 
-        // Рисуване на фон на мрежата (полупрозрачна дъска – неонов нюанс)
+        // Полупрозрачна дъска – достатъчно видима, за да не се слива с фона (без разсейване)
         for (int row = 0; row < GameConstants.ROWS; row++) {
             for (int col = 0; col < GameConstants.COLS; col++) {
-                shapeRenderer.setColor(0.12f, 0.1f, 0.18f, 0.48f);
+                shapeRenderer.setColor(0.1f, 0.08f, 0.16f, 0.65f);
                 shapeRenderer.rect(gridOffsetX + col * CELL_SIZE, gridOffsetY + row * CELL_SIZE, CELL_SIZE, CELL_SIZE);
             }
         }
@@ -278,9 +278,9 @@ public class GameRenderer {
         // ----------------------------------------------------------------------------------
         // === IV. ShapeRenderer (Линии на мрежата и Неонова рамка) ===
 
-        // Рисуване на линии на мрежата (полупрозрачни – неонов нюанс)
+        // Линии на мрежата – ясно очертават клетките, без да премахват прозрачния вид
         shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
-        shapeRenderer.setColor(0.2f, 0.15f, 0.3f, 0.55f);
+        shapeRenderer.setColor(0.22f, 0.18f, 0.32f, 0.72f);
         for (int row = 0; row <= GameConstants.ROWS; row++) {
             shapeRenderer.line(gridOffsetX, gridOffsetY + row * CELL_SIZE, gridOffsetX + GameConstants.COLS * CELL_SIZE, gridOffsetY + row * CELL_SIZE);
         }
