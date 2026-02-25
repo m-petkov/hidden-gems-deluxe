@@ -18,6 +18,7 @@ import com.badlogic.gdx.InputProcessor;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
+import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
@@ -36,6 +37,8 @@ public class GameScreen implements Screen, InputProcessor {
     private final GameApp game;
     private ShapeRenderer shapeRenderer;
     private BitmapFont font;
+    /** По-голям шрифт за надписите (Game Over, Level Up, Level 12) – по-малко пикселизация. */
+    private BitmapFont overlayFont;
     private SpriteBatch batch;
 
     private int CELL_SIZE;
@@ -143,6 +146,16 @@ public class GameScreen implements Screen, InputProcessor {
         parameter.borderWidth = 1f;
         parameter.borderColor = Color.BLACK;
         font = generator.generateFont(parameter);
+        if (font.getRegion() != null && font.getRegion().getTexture() != null) {
+            font.getRegion().getTexture().setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
+        }
+        FreeTypeFontGenerator.FreeTypeFontParameter overlayParam = new FreeTypeFontGenerator.FreeTypeFontParameter();
+        overlayParam.size = 52;
+        overlayParam.color = Color.WHITE;
+        overlayFont = generator.generateFont(overlayParam);
+        if (overlayFont.getRegion() != null && overlayFont.getRegion().getTexture() != null) {
+            overlayFont.getRegion().getTexture().setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
+        }
         generator.dispose();
 
         random = new Random();
@@ -287,20 +300,20 @@ public class GameScreen implements Screen, InputProcessor {
 
             float gridW = GameConstants.COLS * CELL_SIZE;
             float gridH = GameConstants.ROWS * CELL_SIZE;
-            float overlayAlpha = 0.78f * Math.min(1f, (3f - gameOverTimer) / 0.35f);
+            float overlayAlpha = 0.42f * Math.min(1f, (3f - gameOverTimer) / 0.35f);
 
             shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
-            shapeRenderer.setColor(0.06f, 0.02f, 0.12f, overlayAlpha);
+            shapeRenderer.setColor(0.05f, 0.04f, 0.12f, overlayAlpha);
             shapeRenderer.rect(gridOffsetX, gridOffsetY, gridW, gridH);
             shapeRenderer.end();
 
-            String gameOverText = "GAME OVER!";
+            String gameOverText = "GAME OVER";
             float alpha = Math.min(1f, gameOverTimer);
-            float scale = 1.2f;
+            float titleScale = 1.05f;
 
-            font.getData().setScale(scale);
-            GlyphLayout gameOverLayout = new GlyphLayout(font, gameOverText);
-            font.getData().setScale(1f);
+            overlayFont.getData().setScale(titleScale);
+            GlyphLayout gameOverLayout = new GlyphLayout(overlayFont, gameOverText);
+            overlayFont.getData().setScale(1f);
 
             float gridCenterX = gridOffsetX + gridW / 2f;
             float gridCenterY = gridOffsetY + gridH / 2f;
@@ -308,17 +321,18 @@ public class GameScreen implements Screen, InputProcessor {
             float centerY = gridCenterY + gameOverLayout.height / 2f;
 
             batch.begin();
-            Color gameOverNeon = new Color(1f, 0.35f, 0.6f, 1f);  // неоново магента/розово
-            drawNeonText3D(batch, font, gameOverText, centerX, centerY, scale, gameOverNeon, alpha);
+            Color gameOverNeon = new Color(0.95f, 0.25f, 0.75f, 1f);
+            drawNeonText3D(batch, overlayFont, gameOverText, centerX, centerY, titleScale, gameOverNeon, alpha);
 
             String scoreLine = "Score: " + score;
-            font.getData().setScale(0.75f);
-            GlyphLayout scoreLayout = new GlyphLayout(font, scoreLine);
+            float scoreScale = 0.62f;
+            overlayFont.getData().setScale(scoreScale);
+            GlyphLayout scoreLayout = new GlyphLayout(overlayFont, scoreLine);
             float sx = gridCenterX - scoreLayout.width / 2f;
-            float sy = gridCenterY - gameOverLayout.height - 20;
-            Color scoreNeon = new Color(0.4f, 0.95f, 1f, alpha * 0.95f);  // неонов циан
-            drawNeonText3D(batch, font, scoreLine, sx, sy, 0.75f, scoreNeon, alpha * 0.95f);
-            font.getData().setScale(1f);
+            float sy = gridCenterY - gameOverLayout.height - 22;
+            Color scoreNeon = new Color(0.4f, 0.95f, 1f, alpha * 0.95f);
+            drawNeonText3D(batch, overlayFont, scoreLine, sx, sy, scoreScale, scoreNeon, alpha * 0.95f);
+            overlayFont.getData().setScale(1f);
             batch.end();
 
             if (gameOverTimer <= 0f) {
@@ -399,66 +413,45 @@ public class GameScreen implements Screen, InputProcessor {
         // Рисуване на всички 3D камъни върху фона
         Gem3DRenderer.renderAll();
 
-        // Level Up – неонов нюанс + 3D ефект
+        // Level Up – само неонов надпис с 3D (без кутия)
         if (levelUpTimer > 0f) {
-            String levelText = "LEVEL UP!";
+            String levelText = "LEVEL UP";
             float alpha = Math.min(1f, levelUpTimer);
-            float scale = 1.2f;
+            float scale = 1.08f;
 
-            font.getData().setScale(scale);
-            GlyphLayout levelUpLayout = new GlyphLayout(font, levelText);
-            font.getData().setScale(1f);
+            overlayFont.getData().setScale(scale);
+            GlyphLayout levelUpLayout = new GlyphLayout(overlayFont, levelText);
+            overlayFont.getData().setScale(1f);
 
             float gridCenterX = gridOffsetX + (GameConstants.COLS * CELL_SIZE) / 2f;
             float gridCenterY = gridOffsetY + (GameConstants.ROWS * CELL_SIZE) / 2f;
-
-            float pad = 32f;
-            float boxW = levelUpLayout.width + pad * 2f;
-            float boxH = levelUpLayout.height + pad * 2f;
-            float boxX = gridCenterX - boxW / 2f;
-            float boxY = gridCenterY - boxH / 2f;
-
-            shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
-            shapeRenderer.setColor(0.04f, 0.08f, 0.14f, 0.9f * alpha);
-            shapeRenderer.rect(boxX, boxY, boxW, boxH);
-            shapeRenderer.end();
-
-            batch.begin();
             float levelTextX = gridCenterX - levelUpLayout.width / 2f;
             float levelTextY = gridCenterY + levelUpLayout.height / 2f;
-            Color levelUpNeon = new Color(0.3f, 1f, 0.7f, 1f);  // неонов циан/лайм
-            drawNeonText3D(batch, font, levelText, levelTextX, levelTextY, scale, levelUpNeon, alpha);
+
+            batch.begin();
+            Color levelUpNeon = new Color(0.2f, 0.98f, 0.9f, 1f);
+            drawNeonText3D(batch, overlayFont, levelText, levelTextX, levelTextY, scale, levelUpNeon, alpha);
             batch.end();
         }
 
-        // Съобщение ниво 12 – неонов розов/магента + 3D ефект
+        // Ниво 12 – само неонов надпис с 3D (без кутия)
         if (pinkEnabledMessageTimer > 0f) {
-            String pinkText = "Level 12 is reached, pink gems enabled";
+            String pinkText = "Level 12 — pink gems enabled";
             float alpha = Math.min(1f, pinkEnabledMessageTimer);
-            float scale = 0.88f;
+            float scale = 0.7f;
 
-            font.getData().setScale(scale);
-            GlyphLayout pinkLayout = new GlyphLayout(font, pinkText);
-            font.getData().setScale(1f);
+            overlayFont.getData().setScale(scale);
+            GlyphLayout pinkLayout = new GlyphLayout(overlayFont, pinkText);
+            overlayFont.getData().setScale(1f);
 
             float gridCenterX = gridOffsetX + (GameConstants.COLS * CELL_SIZE) / 2f;
-            float gridCenterY = gridOffsetY + (GameConstants.ROWS * CELL_SIZE) / 2f;
-            float pad = 24f;
-            float boxW = pinkLayout.width + pad * 2f;
-            float boxH = pinkLayout.height + pad * 2f;
-            float boxX = gridCenterX - boxW / 2f;
-            float boxY = gridCenterY - boxH / 2f - 50f;
-
-            shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
-            shapeRenderer.setColor(0.1f, 0.04f, 0.12f, 0.88f * alpha);
-            shapeRenderer.rect(boxX, boxY, boxW, boxH);
-            shapeRenderer.end();
+            float gridCenterY = gridOffsetY + (GameConstants.ROWS * CELL_SIZE) / 2f - 50f;
+            float textX = gridCenterX - pinkLayout.width / 2f;
+            float textY = gridCenterY + pinkLayout.height / 2f;
 
             batch.begin();
-            float textX = gridCenterX - pinkLayout.width / 2f;
-            float textY = gridCenterY + pinkLayout.height / 2f - 50f;
-            Color pinkNeon = new Color(1f, 0.45f, 0.85f, 1f);  // неоново розово/магента
-            drawNeonText3D(batch, font, pinkText, textX, textY, scale, pinkNeon, alpha);
+            Color pinkNeon = new Color(0.98f, 0.4f, 0.88f, 1f);
+            drawNeonText3D(batch, overlayFont, pinkText, textX, textY, scale, pinkNeon, alpha);
             batch.end();
         }
 
@@ -486,22 +479,48 @@ public class GameScreen implements Screen, InputProcessor {
         Gem3DRenderer.addShardExplosion(cx, cy, color);
     }
 
-    /** Рисува текст с неонов нюанс и 3D ефект (сянка + ореол + основен текст). */
+    /** Модерен неонов надпис: дълбока 3D сянка + многослоен ореол + ярък core (като неонова табела). */
     private void drawNeonText3D(SpriteBatch batch, BitmapFont font, String text, float x, float y,
             float scale, Color neonColor, float alpha) {
         font.getData().setScale(scale);
-        float shadowOffset = 3f;
-        font.setColor(0.02f, 0.02f, 0.06f, alpha * 0.9f);
-        font.draw(batch, text, x + shadowOffset, y - shadowOffset);
-        float glowAlpha = alpha * 0.22f;
-        font.setColor(neonColor.r, neonColor.g, neonColor.b, glowAlpha);
-        int[] dx = { -2, 0, 2, -2, 2, -2, 0, 2 };
-        int[] dy = { -2, -2, -2, 0, 0, 2, 2, 2 };
-        for (int i = 0; i < dx.length; i++) {
-            font.draw(batch, text, x + dx[i], y + dy[i]);
+        float r = neonColor.r, g = neonColor.g, b = neonColor.b;
+
+        // Дълбока 3D сянка – два слоя за обем
+        font.setColor(0.02f, 0.02f, 0.08f, alpha * 0.85f);
+        font.draw(batch, text, x + 6f, y - 6f);
+        font.setColor(0.04f, 0.03f, 0.12f, alpha * 0.7f);
+        font.draw(batch, text, x + 3f, y - 3f);
+
+        // Външен мек ореол (неонова дифузия) – много посоки, ниска алфа
+        int[] ox = { -5, -4, -3, -2, 0, 2, 3, 4, 5, -4, -3, 4, 3, -5, 5, -2, 2, 0, 0, -3, 3, -4, 4 };
+        int[] oy = { 0, -2, -3, -4, -5, -4, -3, -2, 0, 2, 3, 2, 3, -2, -2, 4, 4, 5, -5, 4, 4, -3, -3 };
+        for (int i = 0; i < ox.length; i++) {
+            float dist = (float) Math.sqrt(ox[i] * ox[i] + oy[i] * oy[i]);
+            float layerAlpha = alpha * (0.12f - dist * 0.018f);
+            if (layerAlpha > 0.01f) {
+                font.setColor(r, g, b, layerAlpha);
+                font.draw(batch, text, x + ox[i], y + oy[i]);
+            }
         }
-        font.setColor(neonColor.r, neonColor.g, neonColor.b, alpha);
+        font.setColor(r, g, b, alpha * 0.28f);
+        for (int d = -2; d <= 2; d++) {
+            for (int e = -2; e <= 2; e++) {
+                if (d == 0 && e == 0) continue;
+                font.draw(batch, text, x + d, y + e);
+            }
+        }
+
+        // Вътрешен ореол (близо до текста)
+        font.setColor(r, g, b, alpha * 0.5f);
+        font.draw(batch, text, x + 1f, y);
+        font.draw(batch, text, x - 1f, y);
+        font.draw(batch, text, x, y + 1f);
+        font.draw(batch, text, x, y - 1f);
+
+        // Ярък core (неонова тръба)
+        font.setColor(r, g, b, alpha);
         font.draw(batch, text, x, y);
+
         font.setColor(1f, 1f, 1f, 1f);
         font.getData().setScale(1f);
     }
@@ -566,6 +585,7 @@ public class GameScreen implements Screen, InputProcessor {
     public void dispose() {
         shapeRenderer.dispose();
         font.dispose();
+        if (overlayFont != null) overlayFont.dispose();
         batch.dispose();
         if (dropTask != null) dropTask.cancel();
 
