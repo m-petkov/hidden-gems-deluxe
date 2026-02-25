@@ -1,33 +1,41 @@
-# hidden-gems-deluxe
+# Hidden Gems Deluxe
 
-A [libGDX](https://libgdx.com/) project generated with [gdx-liftoff](https://github.com/libgdx/gdx-liftoff).
+A match-3 style puzzle game built with [libGDX](https://libgdx.com/), featuring neon visuals, 3D gem effects, and dynamic animated backgrounds.
 
-This project was generated with a template including simple application launchers and an `ApplicationAdapter` extension that draws libGDX logo.
+![Hidden Gems Deluxe](https://i.postimg.cc/5tjSHYRB/hgd.png)
+
+## About the Game
+
+**Hidden Gems Deluxe** is a gem-matching puzzle where you clear the board by matching three or more gems of the same color. The game combines classic match-3 mechanics with a distinctive neon aesthetic:
+
+- **3D gems** — Gems are rendered in 3D with neon-style materials and lighting.
+- **Animated background** — A living gradient with drifting orbs and subtle motion keeps the playfield visually rich.
+- **Semi-transparent board** — The game board sits over the background with a clear but non-distracting look.
+- **Modern UI** — Menus and overlays use neon-styled text with glow effects; the main/pause menu has pill-shaped lime buttons with 3D press and hover feedback.
+- **Progression** — Level up as you play; at level 12, pink gems are unlocked for more variety.
+
+### Controls
+
+- **Arrow keys** — Move the cursor and drop gems.
+- **Down arrow** — Soft drop (faster fall) or hard drop when pressed during fall.
+- **Pause** — Access the main/pause menu from in-game.
 
 ## Platforms
 
-- `core`: Main module with the application logic shared by all platforms.
-- `lwjgl3`: Primary desktop platform using LWJGL3; was called 'desktop' in older docs.
+- **core** — Shared game logic, rendering, and assets for all platforms.
+- **lwjgl3** — Desktop (Windows, macOS, Linux) using LWJGL3.
 
-## Gradle
+## Getting Started
 
-This project uses [Gradle](https://gradle.org/) to manage dependencies.
-The Gradle wrapper was included, so you can run Gradle tasks using `gradlew.bat` or `./gradlew` commands.
-Useful Gradle tasks and flags:
+This project uses [Gradle](https://gradle.org/) (with wrapper). Useful commands:
 
-- `--continue`: when using this flag, errors will not stop the tasks from running.
-- `--daemon`: thanks to this flag, Gradle daemon will be used to run chosen tasks.
-- `--offline`: when using this flag, cached dependency archives will be used.
-- `--refresh-dependencies`: this flag forces validation of all dependencies. Useful for snapshot versions.
-- `build`: builds sources and archives of every project.
-- `cleanEclipse`: removes Eclipse project data.
-- `cleanIdea`: removes IntelliJ project data.
-- `clean`: removes `build` folders, which store compiled classes and built archives.
-- `eclipse`: generates Eclipse project data.
-- `idea`: generates IntelliJ project data.
-- `lwjgl3:jar`: builds application's runnable jar, which can be found at `lwjgl3/build/libs`.
-- `lwjgl3:run`: starts the application.
-- `test`: runs unit tests (if any).
+- **Run the game (desktop):** `./gradlew lwjgl3:run` (or `gradlew.bat lwjgl3:run` on Windows)
+- **Build runnable JAR:** `./gradlew lwjgl3:jar` — output in `lwjgl3/build/libs`
+- **Build everything:** `./gradlew build`
+- **Clean:** `./gradlew clean`
 
-Note that most tasks that are not specific to a single project can be run with `name:` prefix, where the `name` should be replaced with the ID of a specific project.
-For example, `core:clean` removes `build` folder only from the `core` project.
+Other Gradle options: `--continue`, `--daemon`, `--offline`, `--refresh-dependencies`. Project-specific tasks: `core:clean`, `lwjgl3:run`, etc.
+
+## Project Structure
+
+Generated with [gdx-liftoff](https://github.com/libgdx/gdx-liftoff). Application entry and shared code live in `core`; the `lwjgl3` module launches the desktop version.
