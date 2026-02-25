@@ -105,6 +105,7 @@ public class GameScreen implements Screen, InputProcessor {
     @Override
     public void show() {
         Gdx.input.setInputProcessor(this);
+        downKeyReleased = true; // винаги готови за натискане при показване на екрана
 
         if (wasInitialized) return;
         wasInitialized = true;
@@ -354,6 +355,7 @@ public class GameScreen implements Screen, InputProcessor {
                         isAnimating = true;
                     } else {
                         isHardDropping = false;
+                        downKeyReleased = true; // готови за следващо натискане (в случай че keyUp не е пристигнал)
                         for (int i = 0; i < 3; i++) {
                             int row = fallingBlock.getFallingRow() - i;
                             int col = fallingBlock.getFallingCol();
