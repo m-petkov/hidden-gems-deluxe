@@ -36,6 +36,18 @@ This project uses [Gradle](https://gradle.org/) (with wrapper). Useful commands:
 
 Other Gradle options: `--continue`, `--daemon`, `--offline`, `--refresh-dependencies`. Project-specific tasks: `core:clean`, `lwjgl3:run`, etc.
 
+## Donate
+
+If you enjoy Hidden Gems Deluxe and want to support development, you can donate to:
+
+| Network | Address |
+|---------|---------|
+| **BTC** | `bc1qzsuu2zygp8j9qlftjq2fdu73932zxftax0ggvl` |
+| **ETH** | `0xF868B80958AC6BDce638E90bA722E73AC0f919C5` |
+| **BNB** | `0xF868B80958AC6BDce638E90bA722E73AC0f919C5` |
+| **SOL** | `3tYQcU5rSEWJBoDrocyqkjvjM1zji6f6ZY4ygetP9CAj` |
+| **TRX** | `TXosSwbddYbJ2PwJ9DsR9xvVhfKyX82pev` |
+
 ## Project Structure
 
 Generated with [gdx-liftoff](https://github.com/libgdx/gdx-liftoff). Application entry and shared code live in `core`; the `lwjgl3` module launches the desktop version.
