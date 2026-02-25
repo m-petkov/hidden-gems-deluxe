@@ -374,6 +374,10 @@ public class GameScreen implements Screen, InputProcessor {
             visualFallingY = fallingBlock.getFallingRow() + 1 - animationProgress;
         } else {
             visualFallingY = fallingBlock.getFallingRow();
+            // Когато не анимираме и не сме в hard drop, винаги сме готови за ново натискане „надолу“
+            if (!isHardDropping) {
+                downKeyReleased = true;
+            }
         }
 
         particles.removeIf(p -> {
@@ -511,13 +515,16 @@ public class GameScreen implements Screen, InputProcessor {
             fallingBlock.moveHorizontal(1);
         } else if (keycode == Input.Keys.UP) {
             fallingBlock.rotateBlock();
-        } else if (keycode == Input.Keys.DOWN && downKeyReleased && !isAnimating && !isProcessingMatches
-            && fallingBlock.canRise()) {
+        } else if (keycode == Input.Keys.DOWN && downKeyReleased && !isProcessingMatches
+            && fallingBlock.canRise() && (!isAnimating || !isHardDropping)) {
             downKeyReleased = false;
-            fallingBlock.moveDown();
             isHardDropping = true;
-            animationProgress = 0f;
-            isAnimating = true;
+            if (!isAnimating) {
+                fallingBlock.moveDown();
+                animationProgress = 0f;
+                isAnimating = true;
+            }
+            // Ако вече анимираме (меко падане), само ускоряваме – следващият кадър ще ползва hard drop скорост
         }
 
         return true;
