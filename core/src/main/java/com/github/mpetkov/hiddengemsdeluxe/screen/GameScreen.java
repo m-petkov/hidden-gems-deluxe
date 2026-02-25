@@ -287,16 +287,16 @@ public class GameScreen implements Screen, InputProcessor {
 
             float gridW = GameConstants.COLS * CELL_SIZE;
             float gridH = GameConstants.ROWS * CELL_SIZE;
-            float overlayAlpha = 0.72f * Math.min(1f, (3f - gameOverTimer) / 0.35f);
+            float overlayAlpha = 0.78f * Math.min(1f, (3f - gameOverTimer) / 0.35f);
 
             shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
-            shapeRenderer.setColor(0.06f, 0.02f, 0.02f, overlayAlpha);
+            shapeRenderer.setColor(0.06f, 0.02f, 0.12f, overlayAlpha);
             shapeRenderer.rect(gridOffsetX, gridOffsetY, gridW, gridH);
             shapeRenderer.end();
 
             String gameOverText = "GAME OVER!";
             float alpha = Math.min(1f, gameOverTimer);
-            float scale = 1.15f;
+            float scale = 1.2f;
 
             font.getData().setScale(scale);
             GlyphLayout gameOverLayout = new GlyphLayout(font, gameOverText);
@@ -308,20 +308,16 @@ public class GameScreen implements Screen, InputProcessor {
             float centerY = gridCenterY + gameOverLayout.height / 2f;
 
             batch.begin();
-            font.getData().setScale(scale);
-            font.setColor(0.1f, 0.15f, 0.05f, alpha);
-            font.draw(batch, gameOverText, centerX + 2, centerY - 2);
-            font.setColor(Color.LIME.r, Color.LIME.g, Color.LIME.b, alpha);
-            font.draw(batch, gameOverText, centerX, centerY);
+            Color gameOverNeon = new Color(1f, 0.35f, 0.6f, 1f);  // неоново магента/розово
+            drawNeonText3D(batch, font, gameOverText, centerX, centerY, scale, gameOverNeon, alpha);
 
             String scoreLine = "Score: " + score;
-            font.getData().setScale(0.7f);
+            font.getData().setScale(0.75f);
             GlyphLayout scoreLayout = new GlyphLayout(font, scoreLine);
             float sx = gridCenterX - scoreLayout.width / 2f;
-            float sy = gridCenterY - gameOverLayout.height - 18;
-            font.setColor(Color.LIME.r * 0.7f, Color.LIME.g * 0.7f, Color.LIME.b * 0.7f, alpha * 0.9f);
-            font.draw(batch, scoreLine, sx, sy);
-
+            float sy = gridCenterY - gameOverLayout.height - 20;
+            Color scoreNeon = new Color(0.4f, 0.95f, 1f, alpha * 0.95f);  // неонов циан
+            drawNeonText3D(batch, font, scoreLine, sx, sy, 0.75f, scoreNeon, alpha * 0.95f);
             font.getData().setScale(1f);
             batch.end();
 
@@ -403,11 +399,11 @@ public class GameScreen implements Screen, InputProcessor {
         // Рисуване на всички 3D камъни върху фона
         Gem3DRenderer.renderAll();
 
-        // Level Up над всичко (вкл. 3D камъните)
+        // Level Up – неонов нюанс + 3D ефект
         if (levelUpTimer > 0f) {
             String levelText = "LEVEL UP!";
             float alpha = Math.min(1f, levelUpTimer);
-            float scale = 1.15f;
+            float scale = 1.2f;
 
             font.getData().setScale(scale);
             GlyphLayout levelUpLayout = new GlyphLayout(font, levelText);
@@ -416,35 +412,30 @@ public class GameScreen implements Screen, InputProcessor {
             float gridCenterX = gridOffsetX + (GameConstants.COLS * CELL_SIZE) / 2f;
             float gridCenterY = gridOffsetY + (GameConstants.ROWS * CELL_SIZE) / 2f;
 
-            float pad = 28f;
+            float pad = 32f;
             float boxW = levelUpLayout.width + pad * 2f;
             float boxH = levelUpLayout.height + pad * 2f;
             float boxX = gridCenterX - boxW / 2f;
             float boxY = gridCenterY - boxH / 2f;
 
             shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
-            shapeRenderer.setColor(0.08f, 0.08f, 0.12f, 0.92f * alpha);
+            shapeRenderer.setColor(0.04f, 0.08f, 0.14f, 0.9f * alpha);
             shapeRenderer.rect(boxX, boxY, boxW, boxH);
             shapeRenderer.end();
 
             batch.begin();
-            font.getData().setScale(scale);
             float levelTextX = gridCenterX - levelUpLayout.width / 2f;
             float levelTextY = gridCenterY + levelUpLayout.height / 2f;
-
-            font.setColor(0.1f, 0.15f, 0.05f, alpha);
-            font.draw(batch, levelText, levelTextX + 2, levelTextY - 2);
-            font.setColor(Color.LIME.r, Color.LIME.g, Color.LIME.b, alpha);
-            font.draw(batch, levelText, levelTextX, levelTextY);
-            font.getData().setScale(1f);
+            Color levelUpNeon = new Color(0.3f, 1f, 0.7f, 1f);  // неонов циан/лайм
+            drawNeonText3D(batch, font, levelText, levelTextX, levelTextY, scale, levelUpNeon, alpha);
             batch.end();
         }
 
-        // Съобщение при достигане на ниво 12 – розовите камъни са активирани
+        // Съобщение ниво 12 – неонов розов/магента + 3D ефект
         if (pinkEnabledMessageTimer > 0f) {
             String pinkText = "Level 12 is reached, pink gems enabled";
             float alpha = Math.min(1f, pinkEnabledMessageTimer);
-            float scale = 0.85f;
+            float scale = 0.88f;
 
             font.getData().setScale(scale);
             GlyphLayout pinkLayout = new GlyphLayout(font, pinkText);
@@ -452,26 +443,22 @@ public class GameScreen implements Screen, InputProcessor {
 
             float gridCenterX = gridOffsetX + (GameConstants.COLS * CELL_SIZE) / 2f;
             float gridCenterY = gridOffsetY + (GameConstants.ROWS * CELL_SIZE) / 2f;
-            float pad = 20f;
+            float pad = 24f;
             float boxW = pinkLayout.width + pad * 2f;
             float boxH = pinkLayout.height + pad * 2f;
             float boxX = gridCenterX - boxW / 2f;
             float boxY = gridCenterY - boxH / 2f - 50f;
 
             shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
-            shapeRenderer.setColor(0.12f, 0.06f, 0.10f, 0.9f * alpha);
+            shapeRenderer.setColor(0.1f, 0.04f, 0.12f, 0.88f * alpha);
             shapeRenderer.rect(boxX, boxY, boxW, boxH);
             shapeRenderer.end();
 
             batch.begin();
-            font.getData().setScale(scale);
             float textX = gridCenterX - pinkLayout.width / 2f;
             float textY = gridCenterY + pinkLayout.height / 2f - 50f;
-            font.setColor(0.2f, 0.1f, 0.15f, alpha);
-            font.draw(batch, pinkText, textX + 2, textY - 2);
-            font.setColor(ColorMapper.PINK.r, ColorMapper.PINK.g, ColorMapper.PINK.b, alpha);
-            font.draw(batch, pinkText, textX, textY);
-            font.getData().setScale(1f);
+            Color pinkNeon = new Color(1f, 0.45f, 0.85f, 1f);  // неоново розово/магента
+            drawNeonText3D(batch, font, pinkText, textX, textY, scale, pinkNeon, alpha);
             batch.end();
         }
 
@@ -497,6 +484,26 @@ public class GameScreen implements Screen, InputProcessor {
             particles.add(new Particle(cx, cy, dx, dy, color));
         }
         Gem3DRenderer.addShardExplosion(cx, cy, color);
+    }
+
+    /** Рисува текст с неонов нюанс и 3D ефект (сянка + ореол + основен текст). */
+    private void drawNeonText3D(SpriteBatch batch, BitmapFont font, String text, float x, float y,
+            float scale, Color neonColor, float alpha) {
+        font.getData().setScale(scale);
+        float shadowOffset = 3f;
+        font.setColor(0.02f, 0.02f, 0.06f, alpha * 0.9f);
+        font.draw(batch, text, x + shadowOffset, y - shadowOffset);
+        float glowAlpha = alpha * 0.22f;
+        font.setColor(neonColor.r, neonColor.g, neonColor.b, glowAlpha);
+        int[] dx = { -2, 0, 2, -2, 2, -2, 0, 2 };
+        int[] dy = { -2, -2, -2, 0, 0, 2, 2, 2 };
+        for (int i = 0; i < dx.length; i++) {
+            font.draw(batch, text, x + dx[i], y + dy[i]);
+        }
+        font.setColor(neonColor.r, neonColor.g, neonColor.b, alpha);
+        font.draw(batch, text, x, y);
+        font.setColor(1f, 1f, 1f, 1f);
+        font.getData().setScale(1f);
     }
 
     @Override
