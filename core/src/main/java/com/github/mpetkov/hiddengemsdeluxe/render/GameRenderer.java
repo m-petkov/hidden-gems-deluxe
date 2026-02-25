@@ -13,6 +13,7 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.GlyphLayout;
+import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
 
@@ -131,12 +132,14 @@ public class GameRenderer {
 
         // ----------------------------------------------------------------------------------
         // === I. ShapeRenderer (За фон, частици, маркери) ===
+        Gdx.gl.glEnable(GL20.GL_BLEND);
+        Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
 
-        // Рисуване на фон на мрежата
+        // Рисуване на фон на мрежата (полупрозрачна дъска – неонов нюанс)
         for (int row = 0; row < GameConstants.ROWS; row++) {
             for (int col = 0; col < GameConstants.COLS; col++) {
-                shapeRenderer.setColor(0.15f, 0.15f, 0.2f, 1);
+                shapeRenderer.setColor(0.12f, 0.1f, 0.18f, 0.48f);
                 shapeRenderer.rect(gridOffsetX + col * CELL_SIZE, gridOffsetY + row * CELL_SIZE, CELL_SIZE, CELL_SIZE);
             }
         }
@@ -275,9 +278,9 @@ public class GameRenderer {
         // ----------------------------------------------------------------------------------
         // === IV. ShapeRenderer (Линии на мрежата и Неонова рамка) ===
 
-        // Рисуване на линии на мрежата (ТЪНКИ ЛИНИИ) - Line ShapeType
+        // Рисуване на линии на мрежата (полупрозрачни – неонов нюанс)
         shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
-        shapeRenderer.setColor(0.1f, 0.1f, 0.15f, 1);
+        shapeRenderer.setColor(0.2f, 0.15f, 0.3f, 0.55f);
         for (int row = 0; row <= GameConstants.ROWS; row++) {
             shapeRenderer.line(gridOffsetX, gridOffsetY + row * CELL_SIZE, gridOffsetX + GameConstants.COLS * CELL_SIZE, gridOffsetY + row * CELL_SIZE);
         }

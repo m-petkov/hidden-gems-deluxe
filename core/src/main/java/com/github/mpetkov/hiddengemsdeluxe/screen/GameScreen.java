@@ -116,7 +116,7 @@ public class GameScreen implements Screen, InputProcessor {
         // ✅ КОРЕКЦИЯ 1: Инициализация на GameRenderer (зареждане на текстурата / 3D моделите)
         GameRenderer.initialize();
 
-        background = new AnimatedBackground(100);
+        background = new AnimatedBackground();
 
         // === ИЗЧИСЛЯВАНЕ НА ПОЗИЦИЯТА ===
         final int PADDING = 20;

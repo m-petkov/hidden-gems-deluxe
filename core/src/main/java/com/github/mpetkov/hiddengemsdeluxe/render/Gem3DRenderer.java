@@ -41,6 +41,8 @@ public class Gem3DRenderer {
     private static Model gemModel;
     private static Model edgeLinesModel;
     private static Model burstSphereModel;
+    private static Model neonRingModel;
+    private static Model neonSphereModel;
     private static Texture blockTexture;
     private static Environment environment;
     private static Camera camera;
@@ -48,6 +50,9 @@ public class Gem3DRenderer {
     private static final Array<ModelInstance> instances = new Array<>();
     private static final Array<ModelInstance> edgeInstances = new Array<>();
     private static boolean initialized = false;
+
+    /** Време за движещите се 3D обекти във фона. */
+    private static float background3DTime = 0f;
 
     /** 3D burst effects (expanding sphere when gems are cleared). */
     private static final List<BurstEffect> burstEffects = new ArrayList<>();
@@ -266,6 +271,30 @@ public class Gem3DRenderer {
         return mb.end();
     }
 
+    /** Плосък неонов пръстен в XY равнината за движещ се фон. */
+    private static Model createNeonRingModel(Material material) {
+        final int segments = 48;
+        final float innerR = 0.92f;
+        final float outerR = 1f;
+        ModelBuilder mb = new ModelBuilder();
+        mb.begin();
+        MeshPartBuilder part = mb.part("ring", GL20.GL_TRIANGLES,
+                VertexAttributes.Usage.Position | VertexAttributes.Usage.Normal, material);
+        for (int i = 0; i < segments; i++) {
+            float a0 = (float) i / segments * MathUtils.PI2;
+            float a1 = (float) (i + 1) / segments * MathUtils.PI2;
+            float c0 = MathUtils.cos(a0), s0 = MathUtils.sin(a0);
+            float c1 = MathUtils.cos(a1), s1 = MathUtils.sin(a1);
+            short v0 = (short) part.vertex(innerR * c0, innerR * s0, 0f, 0f, 0f, 1f, 0f, 0f);
+            short v1 = (short) part.vertex(outerR * c0, outerR * s0, 0f, 0f, 0f, 1f, 0f, 0f);
+            short v2 = (short) part.vertex(outerR * c1, outerR * s1, 0f, 0f, 0f, 1f, 0f, 0f);
+            short v3 = (short) part.vertex(innerR * c1, innerR * s1, 0f, 0f, 0f, 1f, 0f, 0f);
+            part.triangle(v0, v1, v2);
+            part.triangle(v0, v2, v3);
+        }
+        return mb.end();
+    }
+
     public static void initialize() {
         if (initialized) return;
 
@@ -303,6 +332,23 @@ public class Gem3DRenderer {
                     VertexAttributes.Usage.Position | VertexAttributes.Usage.Normal, burstMaterial);
             burstPart.sphere(1f, 1f, 1f, 16, 12);
             burstSphereModel = mbBurst.end();
+
+            // Движещи се 3D неонови обекти за фон (пръстени + сфери)
+            Material neonRingMat = new Material(
+                    ColorAttribute.createDiffuse(0.2f, 0.6f, 0.95f, 0.42f),
+                    new BlendingAttribute(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA)
+            );
+            neonRingModel = createNeonRingModel(neonRingMat);
+            Material neonSphereMat = new Material(
+                    ColorAttribute.createDiffuse(0.9f, 0.3f, 0.8f, 0.38f),
+                    new BlendingAttribute(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA)
+            );
+            ModelBuilder mbNeon = new ModelBuilder();
+            mbNeon.begin();
+            MeshPartBuilder spherePart = mbNeon.part("neonSphere", GL20.GL_TRIANGLES,
+                    VertexAttributes.Usage.Position | VertexAttributes.Usage.Normal, neonSphereMat);
+            spherePart.sphere(1f, 1f, 1f, 12, 8);
+            neonSphereModel = mbNeon.end();
 
             // Осветление за „драгоценен” вид: по-ярка среда + няколко източника за отблески по фасетите
             environment = new Environment();
@@ -353,9 +399,11 @@ public class Gem3DRenderer {
     public static void beginFrame() {
         instances.clear();
         edgeInstances.clear();
-        rotationAngleDeg += Gdx.graphics.getDeltaTime() * ROTATION_SPEED;
+        float dt = Gdx.graphics.getDeltaTime();
+        rotationAngleDeg += dt * ROTATION_SPEED;
         if (rotationAngleDeg >= 360f) rotationAngleDeg -= 360f;
         if (rotationAngleDeg < 0f) rotationAngleDeg += 360f;
+        background3DTime += dt;
     }
 
     /**
@@ -440,11 +488,80 @@ public class Gem3DRenderer {
         edgeInstances.add(edgeInstance);
     }
 
+    /** Движещи се 3D неонови обекти във фона – пръстени и сфери. */
+    private static void renderMoving3DBackground() {
+        if (neonRingModel == null && neonSphereModel == null) return;
+        float cx = Gdx.graphics.getWidth() / 2f;
+        float cy = Gdx.graphics.getHeight() / 2f;
+        float t = background3DTime;
+        Array<ModelInstance> bgInstances = new Array<>();
+
+        // Неонови пръстени – въртят се и леко се движат
+        if (neonRingModel != null) {
+            float[] ringZ = { -180f, -320f, -480f };
+            float[] ringScale = { 380f, 420f, 360f };
+            float[] ringPhase = { 0f, 2.1f, 4f };
+            Color[] ringColors = {
+                    new Color(0.2f, 0.7f, 0.95f, 0.45f),
+                    new Color(0.9f, 0.25f, 0.75f, 0.4f),
+                    new Color(0.5f, 0.35f, 0.95f, 0.42f)
+            };
+            for (int i = 0; i < ringZ.length; i++) {
+                float dx = 45f * MathUtils.sin(t * 0.5f + ringPhase[i]);
+                float dy = 35f * MathUtils.cos(t * 0.4f + ringPhase[i] * 1.3f);
+                float rotZ = t * (18f + i * 5f);
+                ModelInstance ring = new ModelInstance(neonRingModel);
+                ring.transform.idt();
+                ring.transform.setToTranslation(cx + dx, cy + dy, ringZ[i]);
+                ring.transform.rotate(Vector3.Z, rotZ);
+                ring.transform.scale(ringScale[i], ringScale[i], 1f);
+                ColorAttribute diff = (ColorAttribute) ring.materials.first().get(ColorAttribute.Diffuse);
+                if (diff != null) diff.color.set(ringColors[i]);
+                bgInstances.add(ring);
+            }
+        }
+
+        // Неонови сфери – плуват в пространството
+        if (neonSphereModel != null) {
+            float[] sphereZ = { -120f, -280f, -400f };
+            float[] sphereScale = { 55f, 45f, 50f };
+            float[] spherePhase = { 0f, 1.5f, 3.2f };
+            Color[] sphereColors = {
+                    new Color(0.95f, 0.35f, 0.85f, 0.4f),
+                    new Color(0.25f, 0.8f, 0.9f, 0.38f),
+                    new Color(0.6f, 0.4f, 0.95f, 0.35f)
+            };
+            for (int i = 0; i < sphereZ.length; i++) {
+                float dx = 120f * MathUtils.sin(t * 0.35f + spherePhase[i]);
+                float dy = 80f * MathUtils.cos(t * 0.28f + spherePhase[i] * 0.8f);
+                ModelInstance sphere = new ModelInstance(neonSphereModel);
+                sphere.transform.idt();
+                sphere.transform.setToTranslation(cx + dx, cy + dy, sphereZ[i]);
+                sphere.transform.rotate(Vector3.Y, t * (25f + i * 10f));
+                sphere.transform.rotate(Vector3.X, t * 15f);
+                sphere.transform.scale(sphereScale[i], sphereScale[i], sphereScale[i]);
+                ColorAttribute diff = (ColorAttribute) sphere.materials.first().get(ColorAttribute.Diffuse);
+                if (diff != null) diff.color.set(sphereColors[i]);
+                bgInstances.add(sphere);
+            }
+        }
+
+        if (bgInstances.size > 0) {
+            modelBatch.begin(camera);
+            modelBatch.render(bgInstances, environment);
+            modelBatch.end();
+        }
+    }
+
     /** Render all queued gems and 3D effects. */
     public static void renderAll() {
         if (!initialized || modelBatch == null || camera == null) return;
 
         camera.update();
+
+        // Първо рисуваме движещите се 3D неонови обекти във фона (зад дъската)
+        renderMoving3DBackground();
+
         modelBatch.begin(camera);
         modelBatch.render(instances, environment);
         modelBatch.end();
@@ -524,6 +641,14 @@ public class Gem3DRenderer {
         if (burstSphereModel != null) {
             burstSphereModel.dispose();
             burstSphereModel = null;
+        }
+        if (neonRingModel != null) {
+            neonRingModel.dispose();
+            neonRingModel = null;
+        }
+        if (neonSphereModel != null) {
+            neonSphereModel.dispose();
+            neonSphereModel = null;
         }
         if (modelBatch != null) {
             modelBatch.dispose();

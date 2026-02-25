@@ -7,7 +7,6 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
-import java.lang.Math;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,55 +14,34 @@ import java.util.Random;
 
 public class AnimatedBackground {
 
-    // Клас за симулиране на бързо летяща звезда (запазен)
-    private static class Star {
-        float x, y, speed;
-        float hueOffset;
+    /** Плаващи неонови „мехури“ – движат се и пулсират. */
+    private static final int NUM_ORBS = 36;
+    private static final float[] ORB_HUES = { 0.55f, 0.78f, 0.88f, 0.62f, 0.45f, 0.72f };
+    private static final float ORB_SPEED_MIN = 8f;
+    private static final float ORB_SPEED_MAX = 22f;
+    private static final float ORB_RADIUS_MIN = 18f;
+    private static final float ORB_RADIUS_MAX = 52f;
 
-        private final Random random;
+    private static class Orb {
+        float x, y;
+        float dx, dy;
+        float phase;
+        int hueIndex;
+        float baseRadius;
 
-        Star(Random random) {
-            this.random = random;
-            reset();
-        }
-
-        void update(float delta) {
-            // Движение само по Y, симулирайки полет "напред"
-            y -= speed * delta;
-
-            // Рестарт, когато излезе извън екрана
-            if (y < 0) {
-                reset();
-            }
-        }
-
-        void reset() {
-            x = random.nextFloat() * Gdx.graphics.getWidth();
-            y = Gdx.graphics.getHeight() + random.nextFloat() * 50f; // Започва малко над екрана
-            speed = 300 + random.nextFloat() * 500; // Много висока скорост
-            hueOffset = random.nextFloat();
-        }
-
-        Color getColor(float globalTime) {
-            float hueCenter = 0.65f;
-            float hueAmplitude = 0.3f;
-
-            float baseHue = (hueCenter + hueAmplitude * MathUtils.sin(globalTime * 0.5f)) % 1f;
-            float finalHue = (baseHue + hueOffset * 0.5f) % 1f;
-
-            // Звездите са винаги ярки, но с различна интензивност
-            return hsvToColor(finalHue, 1.0f, 0.8f + 0.2f * random.nextFloat());
+        Orb(float x, float y, float dx, float dy, float phase, int hueIndex, float baseRadius) {
+            this.x = x;
+            this.y = y;
+            this.dx = dx;
+            this.dy = dy;
+            this.phase = phase;
+            this.hueIndex = hueIndex;
+            this.baseRadius = baseRadius;
         }
     }
 
-    private final List<Star> stars = new ArrayList<>();
-    private final Random random = new Random();
+    private final List<Orb> orbs = new ArrayList<>();
     private float globalTime = 0f;
-
-    // Параметри за звездите
-    private final int NUM_STARS;
-
-    // Премахваме всички променливи за фон/линии
 
     private static Color hsvToColor(float h, float s, float v) {
         float r = 0, g = 0, b = 0;
@@ -83,44 +61,92 @@ public class AnimatedBackground {
         return new Color(r, g, b, 1f);
     }
 
-    public AnimatedBackground(int count) {
-        NUM_STARS = count;
-        // Инициализираме бързо движещите се звезди
-        for (int i = 0; i < NUM_STARS; i++) {
-            stars.add(new Star(random));
+    public AnimatedBackground() {
+    }
+
+    private void ensureOrbsInitialized() {
+        float W = Gdx.graphics.getWidth();
+        float H = Gdx.graphics.getHeight();
+        if (orbs.isEmpty() && W > 0 && H > 0) {
+            Random r = new Random();
+            for (int i = 0; i < NUM_ORBS; i++) {
+                float x = r.nextFloat() * W;
+                float y = r.nextFloat() * H;
+                float angle = r.nextFloat() * MathUtils.PI2;
+                float speed = ORB_SPEED_MIN + r.nextFloat() * (ORB_SPEED_MAX - ORB_SPEED_MIN);
+                float dx = MathUtils.cos(angle) * speed;
+                float dy = MathUtils.sin(angle) * speed;
+                float phase = r.nextFloat() * MathUtils.PI2;
+                int hueIndex = r.nextInt(ORB_HUES.length);
+                float baseRadius = ORB_RADIUS_MIN + r.nextFloat() * (ORB_RADIUS_MAX - ORB_RADIUS_MIN);
+                orbs.add(new Orb(x, y, dx, dy, phase, hueIndex, baseRadius));
+            }
         }
     }
 
     public void update(float delta) {
         globalTime += delta;
-        for (Star s : stars) {
-            s.update(delta);
+        ensureOrbsInitialized();
+        float W = Gdx.graphics.getWidth();
+        float H = Gdx.graphics.getHeight();
+        for (Orb o : orbs) {
+            o.x += o.dx * delta;
+            o.y += o.dy * delta;
+            if (o.x < -o.baseRadius * 2) o.x = W + o.baseRadius;
+            if (o.x > W + o.baseRadius * 2) o.x = -o.baseRadius;
+            if (o.y < -o.baseRadius * 2) o.y = H + o.baseRadius;
+            if (o.y > H + o.baseRadius * 2) o.y = -o.baseRadius;
         }
     }
 
     public void render(ShapeRenderer renderer) {
+        final float W = Gdx.graphics.getWidth();
+        final float H = Gdx.graphics.getHeight();
+
         renderer.begin(ShapeRenderer.ShapeType.Filled);
 
-        // === Обновяване на общите настройки ===
-        final float SCREEN_HEIGHT = Gdx.graphics.getHeight();
-
         // ----------------------------------------------------------------------------------
-        // 1. Рисуване на Бързи Неонови Звезди (Warp Speed)
+        // 1. Жив градиент по целия екран (вълна на яркост)
         // ----------------------------------------------------------------------------------
-        for (Star star : stars) {
-            Color starColor = star.getColor(globalTime);
-
-            // Алфа каналът е зависим от позицията (по-ярки в средата на екрана)
-            float brightness = 0.5f + 0.5f * (star.y / SCREEN_HEIGHT);
-            starColor.a = MathUtils.clamp(brightness * 0.8f, 0.2f, 1.0f);
-
-            renderer.setColor(starColor);
-
-            // Рисуваме звездата като линия, за да симулираме движение (като hyperdrive)
-            float trailLength = star.speed / 200f; // По-бързите звезди имат по-дълги следи
-            renderer.rectLine(star.x, star.y, star.x, star.y + trailLength, 2f);
+        final int GRADIENT_STRIPS = 28;
+        final float r0 = 0.07f, g0 = 0.02f, b0 = 0.15f;
+        final float r1 = 0.01f, g1 = 0.01f, b1 = 0.05f;
+        float wave = 0.5f + 0.5f * MathUtils.sin(globalTime * 0.8f);
+        float wave2 = 0.5f + 0.5f * MathUtils.sin(globalTime * 0.5f + 1.3f);
+        for (int i = 0; i < GRADIENT_STRIPS; i++) {
+            float t0 = (float) i / GRADIENT_STRIPS;
+            float t1 = (float) (i + 1) / GRADIENT_STRIPS;
+            float y0 = H * (1f - t0);
+            float y1 = H * (1f - t1);
+            float r = r0 + (r1 - r0) * t0;
+            float g = g0 + (g1 - g0) * t0;
+            float b = b0 + (b1 - b0) * t0;
+            float wobble = 0.04f * (wave * MathUtils.sin(t0 * MathUtils.PI) + wave2 * 0.5f);
+            renderer.setColor(r + wobble, g + wobble * 0.8f, b + wobble * 1.2f, 1f);
+            renderer.rect(0, y1, W, y0 - y1);
         }
 
+        renderer.end();
+
+        // ----------------------------------------------------------------------------------
+        // 2. Плаващи неонови мехури – движат се и пулсират (по-жив ефект)
+        // ----------------------------------------------------------------------------------
+        ensureOrbsInitialized();
+        renderer.begin(ShapeRenderer.ShapeType.Filled);
+        for (Orb o : orbs) {
+            float pulse = 0.85f + 0.25f * MathUtils.sin(globalTime * 1.4f + o.phase);
+            float radius = o.baseRadius * pulse;
+            float hue = ORB_HUES[o.hueIndex] + 0.03f * MathUtils.sin(globalTime * 0.7f + o.phase * 2f);
+            Color c = hsvToColor(hue % 1f, 0.7f, 0.5f + 0.35f * MathUtils.sin(globalTime * 1.1f + o.phase * 1.5f));
+            c.a = 0.08f + 0.18f * (0.5f + 0.5f * MathUtils.sin(globalTime * 1.2f + o.phase));
+            renderer.setColor(c);
+            renderer.circle(o.x, o.y, radius);
+            // Външен мек ореол за по-жив вид
+            float glowRadius = radius * 1.35f;
+            c.a *= 0.4f;
+            renderer.setColor(c);
+            renderer.circle(o.x, o.y, glowRadius);
+        }
         renderer.end();
     }
 }
