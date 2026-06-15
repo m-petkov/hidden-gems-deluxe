@@ -3,7 +3,7 @@
 
 package com.github.mpetkov.hiddengemsdeluxe.render;
 
-import com.badlogic.gdx.Gdx;
+import com.github.mpetkov.hiddengemsdeluxe.util.GameConfig;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
@@ -42,6 +42,17 @@ public class AnimatedBackground {
 
     private final List<Orb> orbs = new ArrayList<>();
     private float globalTime = 0f;
+    private final float worldWidth;
+    private final float worldHeight;
+
+    public AnimatedBackground() {
+        this(GameConfig.WORLD_WIDTH, GameConfig.WORLD_HEIGHT);
+    }
+
+    public AnimatedBackground(float worldWidth, float worldHeight) {
+        this.worldWidth = worldWidth;
+        this.worldHeight = worldHeight;
+    }
 
     private static Color hsvToColor(float h, float s, float v) {
         float r = 0, g = 0, b = 0;
@@ -61,17 +72,12 @@ public class AnimatedBackground {
         return new Color(r, g, b, 1f);
     }
 
-    public AnimatedBackground() {
-    }
-
     private void ensureOrbsInitialized() {
-        float W = Gdx.graphics.getWidth();
-        float H = Gdx.graphics.getHeight();
-        if (orbs.isEmpty() && W > 0 && H > 0) {
+        if (orbs.isEmpty() && worldWidth > 0 && worldHeight > 0) {
             Random r = new Random();
             for (int i = 0; i < NUM_ORBS; i++) {
-                float x = r.nextFloat() * W;
-                float y = r.nextFloat() * H;
+                float x = r.nextFloat() * worldWidth;
+                float y = r.nextFloat() * worldHeight;
                 float angle = r.nextFloat() * MathUtils.PI2;
                 float speed = ORB_SPEED_MIN + r.nextFloat() * (ORB_SPEED_MAX - ORB_SPEED_MIN);
                 float dx = MathUtils.cos(angle) * speed;
@@ -87,21 +93,19 @@ public class AnimatedBackground {
     public void update(float delta) {
         globalTime += delta;
         ensureOrbsInitialized();
-        float W = Gdx.graphics.getWidth();
-        float H = Gdx.graphics.getHeight();
         for (Orb o : orbs) {
             o.x += o.dx * delta;
             o.y += o.dy * delta;
-            if (o.x < -o.baseRadius * 2) o.x = W + o.baseRadius;
-            if (o.x > W + o.baseRadius * 2) o.x = -o.baseRadius;
-            if (o.y < -o.baseRadius * 2) o.y = H + o.baseRadius;
-            if (o.y > H + o.baseRadius * 2) o.y = -o.baseRadius;
+            if (o.x < -o.baseRadius * 2) o.x = worldWidth + o.baseRadius;
+            if (o.x > worldWidth + o.baseRadius * 2) o.x = -o.baseRadius;
+            if (o.y < -o.baseRadius * 2) o.y = worldHeight + o.baseRadius;
+            if (o.y > worldHeight + o.baseRadius * 2) o.y = -o.baseRadius;
         }
     }
 
     public void render(ShapeRenderer renderer) {
-        final float W = Gdx.graphics.getWidth();
-        final float H = Gdx.graphics.getHeight();
+        final float W = worldWidth;
+        final float H = worldHeight;
 
         renderer.begin(ShapeRenderer.ShapeType.Filled);
 

@@ -15,7 +15,7 @@ public class HtmlLauncher {
         int startH = Math.max(1, window.getInnerHeight());
 
         WebApplicationConfiguration config = new WebApplicationConfiguration("canvas");
-        // Non-zero size disables TeaVM's built-in resize listener (we handle resize ourselves).
+        // Fixed initial size so Gdx.graphics.setWindowedMode() can resize the canvas later.
         config.width = startW;
         config.height = startH;
         config.showDownloadLogs = true;
@@ -23,7 +23,7 @@ public class HtmlLauncher {
 
         config.preloadListener = assetLoader -> assetLoader.loadScript("freetype.js");
 
-        ApplicationListener game = new WebResizePollingListener(new GameApp());
+        ApplicationListener game = new WebCanvasSyncListener(new GameApp());
         new WebApplication(game, config);
     }
 }

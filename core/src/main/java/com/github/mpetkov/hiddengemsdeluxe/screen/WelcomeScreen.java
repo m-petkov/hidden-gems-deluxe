@@ -2,6 +2,7 @@ package com.github.mpetkov.hiddengemsdeluxe.screen;
 
 import com.github.mpetkov.hiddengemsdeluxe.GameApp;
 import com.github.mpetkov.hiddengemsdeluxe.render.AnimatedBackground;
+import com.github.mpetkov.hiddengemsdeluxe.util.GameConfig;
 import com.github.mpetkov.hiddengemsdeluxe.util.SaveManager;
 
 import com.badlogic.gdx.Application;
@@ -19,7 +20,7 @@ import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
 import com.badlogic.gdx.scenes.scene2d.*;
 import com.badlogic.gdx.scenes.scene2d.ui.*;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
-import com.badlogic.gdx.utils.viewport.ScreenViewport;
+import com.badlogic.gdx.utils.viewport.FitViewport;
 
 public class WelcomeScreen implements Screen {
 
@@ -38,7 +39,7 @@ public class WelcomeScreen implements Screen {
 
     @Override
     public void show() {
-        stage = new Stage(new ScreenViewport());
+        stage = new Stage(new FitViewport(GameConfig.WORLD_WIDTH, GameConfig.WORLD_HEIGHT));
         Gdx.input.setInputProcessor(stage);
         shapeRenderer = new ShapeRenderer();
         background = new AnimatedBackground();
@@ -190,6 +191,8 @@ public class WelcomeScreen implements Screen {
     @Override public void render(float delta) {
         Gdx.gl.glClearColor(0f, 0f, 0f, 1f);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
+        stage.getViewport().apply();
+        shapeRenderer.setProjectionMatrix(stage.getViewport().getCamera().combined);
         background.update(delta);
         background.render(shapeRenderer);
         stage.act(delta);
@@ -212,7 +215,13 @@ public class WelcomeScreen implements Screen {
             shapeRenderer.dispose();
             shapeRenderer = null;
         }
-        stage.dispose();
-        skin.dispose();
+        if (stage != null) {
+            stage.dispose();
+            stage = null;
+        }
+        if (skin != null) {
+            skin.dispose();
+            skin = null;
+        }
     }
 }

@@ -9,6 +9,7 @@ import com.github.mpetkov.hiddengemsdeluxe.render.AnimatedBackground;
 import com.github.mpetkov.hiddengemsdeluxe.render.GameRenderer;
 import com.github.mpetkov.hiddengemsdeluxe.render.Gem3DRenderer;
 import com.github.mpetkov.hiddengemsdeluxe.util.ColorMapper;
+import com.github.mpetkov.hiddengemsdeluxe.util.GameConfig;
 import com.github.mpetkov.hiddengemsdeluxe.util.GameConstants;
 
 
@@ -18,6 +19,7 @@ import com.badlogic.gdx.InputProcessor;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
+import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
@@ -26,6 +28,8 @@ import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.utils.Timer;
+import com.badlogic.gdx.utils.viewport.FitViewport;
+import com.badlogic.gdx.utils.viewport.Viewport;
 import com.github.mpetkov.hiddengemsdeluxe.util.SaveManager;
 
 import java.util.ArrayList;
@@ -40,6 +44,8 @@ public class GameScreen implements Screen, InputProcessor {
     /** По-голям шрифт за надписите (Game Over, Level Up, Level 12) – по-малко пикселизация. */
     private BitmapFont overlayFont;
     private SpriteBatch batch;
+    private Viewport viewport;
+    private OrthographicCamera camera;
 
     private int CELL_SIZE;
     private int gridOffsetX;
@@ -79,9 +85,6 @@ public class GameScreen implements Screen, InputProcessor {
     /** Само едно ускорение надолу на натискане; след отпускане отново се приема. */
     private boolean downKeyReleased = true;
 
-    /** Cell size when fonts were generated; used to scale text on window resize. */
-    private int referenceCellSize = 0;
-
     public GameScreen(GameApp game) {
         this.game = game;
     }
@@ -114,10 +117,16 @@ public class GameScreen implements Screen, InputProcessor {
         downKeyReleased = true; // винаги готови за натискане при показване на екрана
 
         if (wasInitialized) {
-            updateLayout(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+            if (viewport != null) {
+                viewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
+            }
             return;
         }
         wasInitialized = true;
+
+        camera = new OrthographicCamera();
+        viewport = new FitViewport(GameConfig.WORLD_WIDTH, GameConfig.WORLD_HEIGHT, camera);
+        viewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
 
         shapeRenderer = new ShapeRenderer();
         batch = new SpriteBatch();
@@ -127,7 +136,7 @@ public class GameScreen implements Screen, InputProcessor {
 
         background = new AnimatedBackground();
 
-        updateLayout(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+        updateLayout();
 
         FreeTypeFontGenerator generator = new FreeTypeFontGenerator(Gdx.files.internal("fonts/Play-Regular.ttf"));
         FreeTypeFontGenerator.FreeTypeFontParameter parameter = new FreeTypeFontGenerator.FreeTypeFontParameter();
@@ -150,7 +159,6 @@ public class GameScreen implements Screen, InputProcessor {
             overlayFont.getRegion().getTexture().setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
         }
         generator.dispose();
-        referenceCellSize = CELL_SIZE;
 
         random = new Random();
         gridManager = new GridManager(GameConstants.ROWS, GameConstants.COLS);
@@ -166,9 +174,11 @@ public class GameScreen implements Screen, InputProcessor {
         scheduleDrop(currentDropInterval);
     }
 
-    private void updateLayout(int width, int height) {
+    private void updateLayout() {
         final int PADDING = 20;
         final int SIDE_COLS = 2;
+        final int width = GameConfig.WORLD_WIDTH;
+        final int height = GameConfig.WORLD_HEIGHT;
 
         int heightCell = (height - 2 * PADDING) / GameConstants.ROWS;
         int widthCell = (width - 2 * PADDING) / (GameConstants.COLS + SIDE_COLS);
@@ -180,12 +190,12 @@ public class GameScreen implements Screen, InputProcessor {
 
         gridOffsetY = (height - gridHeight) / 2;
         gridOffsetX = Math.max(PADDING, (width - totalGameWidth) / 2);
+    }
 
-        if (font != null && overlayFont != null && referenceCellSize > 0) {
-            float scale = (float) CELL_SIZE / referenceCellSize;
-            font.getData().setScale(scale);
-            overlayFont.getData().setScale(scale);
-        }
+    private void applyViewport() {
+        viewport.apply();
+        shapeRenderer.setProjectionMatrix(viewport.getCamera().combined);
+        batch.setProjectionMatrix(viewport.getCamera().combined);
     }
 
     private void scheduleDrop(float interval) {
@@ -296,6 +306,8 @@ public class GameScreen implements Screen, InputProcessor {
         Gdx.gl.glClearColor(0f, 0f, 0f, 1f);
         // Clear both color and depth so 3D gems render correctly.
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT | GL20.GL_DEPTH_BUFFER_BIT);
+
+        applyViewport();
 
         // Check for game over early and skip all game logic
         if (isGameOver) {
@@ -597,9 +609,11 @@ public class GameScreen implements Screen, InputProcessor {
 
     @Override
     public void resize(int width, int height) {
-        updateLayout(width, height);
+        if (viewport != null) {
+            viewport.update(width, height, true);
+        }
         if (GameRenderer.uses3DGems()) {
-            Gem3DRenderer.resize(width, height);
+            Gem3DRenderer.resize(GameConfig.WORLD_WIDTH, GameConfig.WORLD_HEIGHT);
         }
     }
     @Override public void pause() {}
