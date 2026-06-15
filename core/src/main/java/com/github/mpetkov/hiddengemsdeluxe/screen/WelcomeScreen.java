@@ -197,7 +197,9 @@ public class WelcomeScreen implements Screen {
     }
 
     @Override public void resize(int w, int h) {
-        stage.getViewport().update(w, h, true);
+        if (stage != null) {
+            stage.getViewport().update(w, h, true);
+        }
     }
 
     @Override public void pause() {}

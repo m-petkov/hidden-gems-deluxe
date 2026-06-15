@@ -114,7 +114,7 @@ public class GameScreen implements Screen, InputProcessor {
         downKeyReleased = true; // винаги готови за натискане при показване на екрана
 
         if (wasInitialized) {
-            updateLayout();
+            updateLayout(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
             return;
         }
         wasInitialized = true;
@@ -127,7 +127,7 @@ public class GameScreen implements Screen, InputProcessor {
 
         background = new AnimatedBackground();
 
-        updateLayout();
+        updateLayout(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 
         FreeTypeFontGenerator generator = new FreeTypeFontGenerator(Gdx.files.internal("fonts/Play-Regular.ttf"));
         FreeTypeFontGenerator.FreeTypeFontParameter parameter = new FreeTypeFontGenerator.FreeTypeFontParameter();
@@ -166,20 +166,20 @@ public class GameScreen implements Screen, InputProcessor {
         scheduleDrop(currentDropInterval);
     }
 
-    private void updateLayout() {
+    private void updateLayout(int width, int height) {
         final int PADDING = 20;
         final int SIDE_COLS = 2;
 
-        int heightCell = (Gdx.graphics.getHeight() - 2 * PADDING) / GameConstants.ROWS;
-        int widthCell = (Gdx.graphics.getWidth() - 2 * PADDING) / (GameConstants.COLS + SIDE_COLS);
+        int heightCell = (height - 2 * PADDING) / GameConstants.ROWS;
+        int widthCell = (width - 2 * PADDING) / (GameConstants.COLS + SIDE_COLS);
         CELL_SIZE = Math.min(heightCell, widthCell);
 
         int gridWidth = GameConstants.COLS * CELL_SIZE;
         int gridHeight = GameConstants.ROWS * CELL_SIZE;
         int totalGameWidth = gridWidth + SIDE_COLS * CELL_SIZE;
 
-        gridOffsetY = (Gdx.graphics.getHeight() - gridHeight) / 2;
-        gridOffsetX = Math.max(PADDING, (Gdx.graphics.getWidth() - totalGameWidth) / 2);
+        gridOffsetY = (height - gridHeight) / 2;
+        gridOffsetX = Math.max(PADDING, (width - totalGameWidth) / 2);
 
         if (font != null && overlayFont != null && referenceCellSize > 0) {
             float scale = (float) CELL_SIZE / referenceCellSize;
@@ -597,7 +597,7 @@ public class GameScreen implements Screen, InputProcessor {
 
     @Override
     public void resize(int width, int height) {
-        updateLayout();
+        updateLayout(width, height);
         if (GameRenderer.uses3DGems()) {
             Gem3DRenderer.resize(width, height);
         }
