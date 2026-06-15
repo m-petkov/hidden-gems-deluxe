@@ -1,0 +1,13 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "name": "Debug Hidden Gems Deluxe",
+      "request": "launch",
+      "mainClass": "com.github.mpetkov.hiddengemsdeluxe.lwjgl3.Lwjgl3Launcher",
+      "projectName": "lwjgl3",
+      "cwd": "${workspaceFolder}/assets"
+    }
+  ]
+}

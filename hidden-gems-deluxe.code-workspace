@@ -1,0 +1,23 @@
+{
+  "folders": [
+    {
+      "path": "."
+    }
+  ],
+  "settings": {
+    "editor.codeLens": true,
+    "java.server.launchMode": "Standard",
+    "java.import.gradle.enabled": true,
+    "java.import.gradle.wrapper.enabled": true,
+    "java.import.gradle.java.home": "C:\\Program Files\\Java\\jdk-25.0.3",
+    "java.configuration.runtimes": [
+      {
+        "name": "JavaSE-25",
+        "path": "C:\\Program Files\\Java\\jdk-25.0.3",
+        "default": true
+      }
+    ],
+    "java.gradle.buildServer.enabled": false,
+    "java.debug.settings.enableRunDebugCodeLens": true
+  }
+}
