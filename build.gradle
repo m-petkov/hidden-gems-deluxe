@@ -25,6 +25,23 @@ allprojects {
       testOutputDir file('build/classes/java/test')
     }
   }
+
+  // VS Code / Eclipse Java extension: compile output must match Gradle (not bin/).
+  eclipse {
+    classpath {
+      defaultOutputDir = file('build/classes/java/main')
+      file {
+        whenMerged { classpath ->
+          classpath.entries.findAll { it.kind == 'src' && !it.path.contains('/test/') && !it.path.contains('resources') }*.output = 'build/classes/java/main'
+          classpath.entries.findAll { it.kind == 'src' && it.path.contains('/test/') }*.output = 'build/classes/java/test'
+          classpath.entries.findAll { it.kind == 'src' && it.path.contains('resources') }.each { entry ->
+            entry.excludes = []
+            entry.output = 'build/resources/main'
+          }
+        }
+      }
+    }
+  }
 }
 
 configure(subprojects.findAll { it.name != 'html' }) {

@@ -27,6 +27,7 @@ import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
 import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.Timer;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
@@ -84,6 +85,8 @@ public class GameScreen implements Screen, InputProcessor {
 
     /** Само едно ускорение надолу на натискане; след отпускане отново се приема. */
     private boolean downKeyReleased = true;
+
+    private final Vector3 touchWorld = new Vector3();
 
     public GameScreen(GameApp game) {
         this.game = game;
@@ -196,6 +199,11 @@ public class GameScreen implements Screen, InputProcessor {
         viewport.apply();
         shapeRenderer.setProjectionMatrix(viewport.getCamera().combined);
         batch.setProjectionMatrix(viewport.getCamera().combined);
+    }
+
+    private void renderHudOverlay() {
+        batch.setProjectionMatrix(viewport.getCamera().combined);
+        GameRenderer.renderHud(batch, font, gridOffsetX, gridOffsetY, CELL_SIZE, score, level, currentDropInterval);
     }
 
     private void scheduleDrop(float interval) {
@@ -315,6 +323,10 @@ public class GameScreen implements Screen, InputProcessor {
             background.update(delta);
             background.render(shapeRenderer);
             
+            if (GameRenderer.uses3DGems()) {
+                Gem3DRenderer.beginFrame();
+            }
+
             // Render the last frame of the game
             GameRenderer.renderGame(shapeRenderer, batch, font,
                 gridOffsetX, gridOffsetY, CELL_SIZE,
@@ -323,6 +335,11 @@ public class GameScreen implements Screen, InputProcessor {
                 score, level, currentDropInterval,
                 levelUpTimer, isGameOver, gameOverTimer,
                 visualFallingY);
+
+            if (GameRenderer.uses3DGems()) {
+                Gem3DRenderer.renderAll();
+            }
+            renderHudOverlay();
 
             gameOverTimer -= delta;
 
@@ -446,6 +463,8 @@ public class GameScreen implements Screen, InputProcessor {
         if (GameRenderer.uses3DGems()) {
             Gem3DRenderer.renderAll();
         }
+
+        renderHudOverlay();
 
         // Level Up – само неонов надпис с 3D (без кутия)
         if (levelUpTimer > 0f) {
@@ -600,12 +619,28 @@ public class GameScreen implements Screen, InputProcessor {
     }
 
     @Override public boolean keyTyped(char character) { return false; }
-    @Override public boolean touchDown(int screenX, int screenY, int pointer, int button) { return false; }
+    @Override public boolean touchDown(int screenX, int screenY, int pointer, int button) {
+        return openGitHubLinkIfClicked(screenX, screenY);
+    }
+
     @Override public boolean touchUp(int screenX, int screenY, int pointer, int button) { return false; }
     @Override public boolean touchDragged(int screenX, int screenY, int pointer) { return false; }
     @Override public boolean touchCancelled(int screenX, int screenY, int pointer, int button) { return false; }
     @Override public boolean mouseMoved(int screenX, int screenY) { return false; }
     @Override public boolean scrolled(float amountX, float amountY) { return false; }
+
+    private boolean openGitHubLinkIfClicked(int screenX, int screenY) {
+        if (viewport == null || !GameRenderer.isGitHubLinkVisible()) {
+            return false;
+        }
+        touchWorld.set(screenX, screenY, 0);
+        viewport.unproject(touchWorld);
+        if (GameRenderer.containsGitHubLink(touchWorld.x, touchWorld.y)) {
+            Gdx.net.openURI(GameRenderer.GITHUB_URL);
+            return true;
+        }
+        return false;
+    }
 
     @Override
     public void resize(int width, int height) {

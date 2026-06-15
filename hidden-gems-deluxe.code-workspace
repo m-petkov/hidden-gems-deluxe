@@ -18,6 +18,7 @@
       }
     ],
     "java.gradle.buildServer.enabled": false,
-    "java.debug.settings.enableRunDebugCodeLens": true
+    "java.debug.settings.enableRunDebugCodeLens": true,
+    "java.compile.nullAnalysis.mode": "disabled"
   }
 }

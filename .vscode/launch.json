@@ -2,12 +2,26 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "type": "node-terminal",
+      "request": "launch",
+      "name": "Run Desktop (Gradle)",
+      "command": ".\\gradlew.bat :lwjgl3:run --no-daemon",
+      "cwd": "${workspaceFolder}"
+    },
+    {
       "type": "java",
       "name": "Debug Hidden Gems Deluxe",
       "request": "launch",
       "mainClass": "com.github.mpetkov.hiddengemsdeluxe.lwjgl3.Lwjgl3Launcher",
       "projectName": "lwjgl3",
-      "cwd": "${workspaceFolder}/assets"
+      "cwd": "${workspaceFolder}/assets",
+      "preLaunchTask": "gradle: prepare desktop run",
+      "vmArgs": "--enable-native-access=ALL-UNNAMED",
+      "classPaths": [
+        "$Auto",
+        "${workspaceFolder}/lwjgl3/build/resources/main",
+        "${workspaceFolder}/core/build/resources/main"
+      ]
     }
   ]
 }

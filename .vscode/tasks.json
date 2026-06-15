@@ -2,6 +2,17 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "gradle: prepare desktop run",
+      "type": "shell",
+      "command": "${workspaceFolder}\\gradlew.bat",
+      "args": [":core:classes", ":lwjgl3:classes", "--no-daemon"],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
       "label": "gradle: run desktop",
       "type": "shell",
       "command": "${workspaceFolder}\\gradlew.bat",

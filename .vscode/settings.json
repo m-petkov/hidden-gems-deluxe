@@ -1,7 +1,7 @@
 {
   "editor.codeLens": true,
   "java.server.launchMode": "Standard",
-  "java.autobuild.enabled": true,
+  "java.autobuild.enabled": false,
   "java.configuration.detectJdksAtStart": true,
   "java.import.gradle.enabled": true,
   "java.import.gradle.wrapper.enabled": true,
@@ -17,9 +17,9 @@
       "default": true
     }
   ],
-  "java.gradle.buildServer.enabled": false,
+  "java.gradle.buildServer.enabled": true,
   "java.debug.settings.enableRunDebugCodeLens": true,
-  "java.debug.settings.forceBuildBeforeLaunch": false,
+  "java.debug.settings.forceBuildBeforeLaunch": true,
   "gradle.nestedProjects": true,
   "gradle.javaDebug": {
     "tasks": [

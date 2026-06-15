@@ -22,6 +22,17 @@ import java.util.List;
 
 public class GameRenderer {
 
+    public static final String GITHUB_URL = "https://github.com/m-petkov";
+    public static final String GITHUB_LABEL = "github.com/m-petkov";
+    private static final float GITHUB_LINK_SCALE = 0.72f;
+    private static final float GITHUB_LINK_GAP = 10f;
+
+    private static float gitHubLinkX;
+    private static float gitHubLinkY;
+    private static float gitHubLinkW;
+    private static float gitHubLinkH;
+    private static boolean gitHubLinkVisible;
+
     // Toggle to enable the 3D gem rendering instead of the flat block texture.
     private static final boolean USE_3D_GEMS = true;
     // Runtime flag that falls back to 2D if 3D init fails or the platform cannot handle it (e.g. TeaVM/WebGL).
@@ -33,6 +44,39 @@ public class GameRenderer {
 
     public static boolean uses3DGems() {
         return use3DGemsRuntime;
+    }
+
+    public static boolean isGitHubLinkVisible() {
+        return gitHubLinkVisible;
+    }
+
+    public static boolean containsGitHubLink(float worldX, float worldY) {
+        return gitHubLinkVisible
+            && worldX >= gitHubLinkX && worldX <= gitHubLinkX + gitHubLinkW
+            && worldY >= gitHubLinkY && worldY <= gitHubLinkY + gitHubLinkH;
+    }
+
+    private static void drawGitHubLink(BitmapFont font, SpriteBatch batch, float statsRightX, float levelY, float levelTextHeight) {
+        float scaleX = font.getData().scaleX;
+        float scaleY = font.getData().scaleY;
+        font.getData().setScale(scaleX * GITHUB_LINK_SCALE, scaleY * GITHUB_LINK_SCALE);
+
+        GlyphLayout linkLayout = new GlyphLayout(font, GITHUB_LABEL);
+        float linkX = statsRightX - linkLayout.width;
+        float linkY = levelY - levelTextHeight - GITHUB_LINK_GAP;
+
+        font.setColor(0f, 0f, 0f, 0.45f);
+        font.draw(batch, GITHUB_LABEL, linkX + 1, linkY - 1);
+        font.setColor(Color.CYAN);
+        font.draw(batch, GITHUB_LABEL, linkX, linkY);
+
+        gitHubLinkX = linkX;
+        gitHubLinkY = linkY - linkLayout.height;
+        gitHubLinkW = linkLayout.width;
+        gitHubLinkH = linkLayout.height;
+        gitHubLinkVisible = true;
+
+        font.getData().setScale(scaleX, scaleY);
     }
 
     // 🔹 За анимацията на неоновия контур
@@ -235,61 +279,11 @@ public class GameRenderer {
                 GameConstants.ROWS + i, GameConstants.COLS + 1, false);
         }
 
-
-        // === III. Текстова част ===
-        if (!batch.isDrawing()) {
-            batch.begin();
+        if (!use3DGemsRuntime) {
+            batch.end();
         }
-        // КОРЕКЦИЯ: Смяна на Color.ORANGE с Color.LIME
-        final Color LIME_COLOR = Color.LIME;
 
-        String nextText = "Next:";
-        GlyphLayout layout = new GlyphLayout(font, nextText);
-        float textX = previewX + CELL_SIZE / 2f - layout.width / 2f;
-        float topRowY = gridOffsetY + (GameConstants.ROWS - 1) * CELL_SIZE + CELL_SIZE / 2f;
-        float textY = topRowY + layout.height / 2f;
-
-        font.setColor(0, 0, 0, 0.5f);
-        font.draw(batch, nextText, textX + 1, textY - 1);
-        font.setColor(LIME_COLOR); // <--- Смяна
-        font.draw(batch, nextText, textX, textY);
-
-        String scoreText = "Score: " + score;
-        GlyphLayout scoreLayout = new GlyphLayout(font, scoreText);
-        float scoreX = gridOffsetX - scoreLayout.width - 40;
-        float scoreY = topRowY + scoreLayout.height / 2f;
-
-        font.setColor(0, 0, 0, 0.5f);
-        font.draw(batch, scoreText, scoreX + 1, scoreY - 1);
-        font.setColor(LIME_COLOR); // <--- Смяна
-        font.draw(batch, scoreText, scoreX, scoreY);
-
-        String speedText = String.format("Speed: %.2f s", currentDropInterval);
-        GlyphLayout speedLayout = new GlyphLayout(font, speedText);
-        float speedX = scoreX + scoreLayout.width - speedLayout.width;
-        float speedY = scoreY - scoreLayout.height - 10;
-
-        font.setColor(0, 0, 0, 0.5f);
-        font.draw(batch, speedText, speedX + 1, speedY - 1);
-        font.setColor(LIME_COLOR); // <--- Смяна
-        font.draw(batch, speedText, speedX, speedY);
-
-        String levelDisplayText = "Level: " + level;
-        GlyphLayout levelLayout = new GlyphLayout(font, levelDisplayText);
-        float levelX = speedX + speedLayout.width - levelLayout.width;
-        float levelY = speedY - levelLayout.height - 10;
-
-        font.setColor(0, 0, 0, 0.5f);
-        font.draw(batch, levelDisplayText, levelX + 1, levelY - 1);
-        font.setColor(LIME_COLOR); // <--- Смяна
-        font.draw(batch, levelDisplayText, levelX, levelY);
-
-        batch.end();
-
-        // ----------------------------------------------------------------------------------
-        // === IV. ShapeRenderer (Линии на мрежата и Неонова рамка) ===
-
-        // Линии на мрежата – ясно очертават клетките, без да премахват прозрачния вид
+        // === III. ShapeRenderer (Линии на мрежата и Неонова рамка) ===
         shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
         shapeRenderer.setColor(0.22f, 0.18f, 0.32f, 0.72f);
         for (int row = 0; row <= GameConstants.ROWS; row++) {
@@ -300,9 +294,6 @@ public class GameRenderer {
         }
         shapeRenderer.end();
 
-        // ----------------------------------------------------------------------------------
-
-        // === БЛОК ЗА НЕОНОВА РАМКА ===
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
 
         float borderThickness = 8f;
@@ -323,7 +314,6 @@ public class GameRenderer {
         float dx = gridWidth / SEGMENTS_PER_SIDE;
         float dy = gridHeight / SEGMENTS_PER_SIDE;
 
-
         for (int i = 0; i < TOTAL_SEGMENTS; i++) {
 
             float phase = (totalPhaseOffset + i * phaseStep) % 1f;
@@ -336,25 +326,21 @@ public class GameRenderer {
             float x, y, width, height;
 
             if (sectionIndex == 0) {
-                // TOP (от TL към TR)
                 x = minX + j * dx;
                 y = maxY - borderThickness;
                 width = dx;
                 height = borderThickness;
             } else if (sectionIndex == 1) {
-                // RIGHT (от TR към BR)
                 x = maxX - borderThickness;
                 y = maxY - (j + 1) * dy;
                 width = borderThickness;
                 height = dy;
             } else if (sectionIndex == 2) {
-                // BOTTOM (от BR към BL)
                 x = minX + (SEGMENTS_PER_SIDE - 1 - j) * dx;
                 y = minY;
                 width = dx;
                 height = borderThickness;
             } else {
-                // LEFT (от BL към TL)
                 x = minX;
                 y = minY + j * dy;
                 width = borderThickness;
@@ -365,7 +351,61 @@ public class GameRenderer {
         }
 
         shapeRenderer.end();
-        // ----------------------------------------------------------------------------------
+    }
+
+    public static void renderHud(SpriteBatch batch, BitmapFont font,
+                                   int gridOffsetX, int gridOffsetY, int CELL_SIZE,
+                                   int score, int level, float currentDropInterval) {
+        float previewX = gridOffsetX + GameConstants.COLS * CELL_SIZE + 40;
+        float topRowY = gridOffsetY + (GameConstants.ROWS - 1) * CELL_SIZE + CELL_SIZE / 2f;
+
+        gitHubLinkVisible = false;
+        batch.begin();
+
+        final Color LIME_COLOR = Color.LIME;
+
+        String nextText = "Next:";
+        GlyphLayout layout = new GlyphLayout(font, nextText);
+        float textX = previewX + CELL_SIZE / 2f - layout.width / 2f;
+        float textY = topRowY + layout.height / 2f;
+
+        font.setColor(0, 0, 0, 0.5f);
+        font.draw(batch, nextText, textX + 1, textY - 1);
+        font.setColor(LIME_COLOR);
+        font.draw(batch, nextText, textX, textY);
+
+        String scoreText = "Score: " + score;
+        GlyphLayout scoreLayout = new GlyphLayout(font, scoreText);
+        float scoreX = gridOffsetX - scoreLayout.width - 40;
+        float scoreY = topRowY + scoreLayout.height / 2f;
+
+        font.setColor(0, 0, 0, 0.5f);
+        font.draw(batch, scoreText, scoreX + 1, scoreY - 1);
+        font.setColor(LIME_COLOR);
+        font.draw(batch, scoreText, scoreX, scoreY);
+
+        String speedText = String.format("Speed: %.2f s", currentDropInterval);
+        GlyphLayout speedLayout = new GlyphLayout(font, speedText);
+        float speedX = scoreX + scoreLayout.width - speedLayout.width;
+        float speedY = scoreY - scoreLayout.height - 10;
+
+        font.setColor(0, 0, 0, 0.5f);
+        font.draw(batch, speedText, speedX + 1, speedY - 1);
+        font.setColor(LIME_COLOR);
+        font.draw(batch, speedText, speedX, speedY);
+
+        String levelDisplayText = "Level: " + level;
+        GlyphLayout levelLayout = new GlyphLayout(font, levelDisplayText);
+        float levelY = speedY - speedLayout.height - 10;
+
+        font.setColor(0, 0, 0, 0.5f);
+        font.draw(batch, levelDisplayText, speedX + speedLayout.width - levelLayout.width + 1, levelY - 1);
+        font.setColor(LIME_COLOR);
+        font.draw(batch, levelDisplayText, speedX + speedLayout.width - levelLayout.width, levelY);
+
+        drawGitHubLink(font, batch, scoreX + scoreLayout.width, levelY, levelLayout.height);
+
+        batch.end();
     }
 
     // 🔹 ПОМОЩЕН МЕТОД за изчисляване на цвета на база фазата
