@@ -4,6 +4,7 @@ import com.github.mpetkov.hiddengemsdeluxe.GameApp;
 import com.github.mpetkov.hiddengemsdeluxe.render.AnimatedBackground;
 import com.github.mpetkov.hiddengemsdeluxe.util.SaveManager;
 
+import com.badlogic.gdx.Application;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
@@ -111,14 +112,6 @@ public class WelcomeScreen implements Screen {
             }
         });
 
-        TextButton exit = new TextButton("Exit", skin);
-        exit.addListener(new ClickListener() {
-            @Override
-            public void clicked(InputEvent event, float x, float y) {
-                Gdx.app.exit();
-            }
-        });
-
         table.top().padTop(80);
         table.add(title).padBottom(40).row();
         table.add(highScoreLabel).padBottom(10).row();
@@ -130,7 +123,19 @@ public class WelcomeScreen implements Screen {
 
         table.add(start).padBottom(15).row();
         table.add(reset).padBottom(15).row();
-        table.add(exit);
+
+        if (Gdx.app.getType() != Application.ApplicationType.WebGL) {
+            TextButton exit = new TextButton("Exit", skin);
+            exit.addListener(new ClickListener() {
+                @Override
+                public void clicked(InputEvent event, float x, float y) {
+                    Gdx.app.exit();
+                }
+            });
+            table.add(exit);
+        }
+
+        stage.getViewport().update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
     }
 
     /** Плътен lime бутон – форма „пилюла“ (напълно закръглени краища), 3D ефект. */

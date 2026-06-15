@@ -79,6 +79,9 @@ public class GameScreen implements Screen, InputProcessor {
     /** Само едно ускорение надолу на натискане; след отпускане отново се приема. */
     private boolean downKeyReleased = true;
 
+    /** Cell size when fonts were generated; used to scale text on window resize. */
+    private int referenceCellSize = 0;
+
     public GameScreen(GameApp game) {
         this.game = game;
     }
@@ -110,7 +113,10 @@ public class GameScreen implements Screen, InputProcessor {
         Gdx.input.setInputProcessor(this);
         downKeyReleased = true; // винаги готови за натискане при показване на екрана
 
-        if (wasInitialized) return;
+        if (wasInitialized) {
+            updateLayout();
+            return;
+        }
         wasInitialized = true;
 
         shapeRenderer = new ShapeRenderer();
@@ -121,20 +127,7 @@ public class GameScreen implements Screen, InputProcessor {
 
         background = new AnimatedBackground();
 
-        // === ИЗЧИСЛЯВАНЕ НА ПОЗИЦИЯТА ===
-        final int PADDING = 20;
-
-        CELL_SIZE = (Gdx.graphics.getHeight() - 2 * PADDING) / GameConstants.ROWS;
-
-        int sidePanelWidth = CELL_SIZE * 2;
-        int gridWidth = GameConstants.COLS * CELL_SIZE;
-        int gridHeight = GameConstants.ROWS * CELL_SIZE;
-        int totalGameWidth = gridWidth + sidePanelWidth;
-
-        gridOffsetY = (Gdx.graphics.getHeight() - gridHeight) / 2;
-        gridOffsetX = (Gdx.graphics.getWidth() - totalGameWidth) / 2;
-
-        // ===========================================
+        updateLayout();
 
         FreeTypeFontGenerator generator = new FreeTypeFontGenerator(Gdx.files.internal("fonts/Play-Regular.ttf"));
         FreeTypeFontGenerator.FreeTypeFontParameter parameter = new FreeTypeFontGenerator.FreeTypeFontParameter();
@@ -157,6 +150,7 @@ public class GameScreen implements Screen, InputProcessor {
             overlayFont.getRegion().getTexture().setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
         }
         generator.dispose();
+        referenceCellSize = CELL_SIZE;
 
         random = new Random();
         gridManager = new GridManager(GameConstants.ROWS, GameConstants.COLS);
@@ -170,6 +164,28 @@ public class GameScreen implements Screen, InputProcessor {
         level = 1;
         currentDropInterval = getDropIntervalForLevel(level);
         scheduleDrop(currentDropInterval);
+    }
+
+    private void updateLayout() {
+        final int PADDING = 20;
+        final int SIDE_COLS = 2;
+
+        int heightCell = (Gdx.graphics.getHeight() - 2 * PADDING) / GameConstants.ROWS;
+        int widthCell = (Gdx.graphics.getWidth() - 2 * PADDING) / (GameConstants.COLS + SIDE_COLS);
+        CELL_SIZE = Math.min(heightCell, widthCell);
+
+        int gridWidth = GameConstants.COLS * CELL_SIZE;
+        int gridHeight = GameConstants.ROWS * CELL_SIZE;
+        int totalGameWidth = gridWidth + SIDE_COLS * CELL_SIZE;
+
+        gridOffsetY = (Gdx.graphics.getHeight() - gridHeight) / 2;
+        gridOffsetX = Math.max(PADDING, (Gdx.graphics.getWidth() - totalGameWidth) / 2);
+
+        if (font != null && overlayFont != null && referenceCellSize > 0) {
+            float scale = (float) CELL_SIZE / referenceCellSize;
+            font.getData().setScale(scale);
+            overlayFont.getData().setScale(scale);
+        }
     }
 
     private void scheduleDrop(float interval) {
@@ -581,7 +597,10 @@ public class GameScreen implements Screen, InputProcessor {
 
     @Override
     public void resize(int width, int height) {
-        Gem3DRenderer.resize(width, height);
+        updateLayout();
+        if (GameRenderer.uses3DGems()) {
+            Gem3DRenderer.resize(width, height);
+        }
     }
     @Override public void pause() {}
     @Override public void resume() {}

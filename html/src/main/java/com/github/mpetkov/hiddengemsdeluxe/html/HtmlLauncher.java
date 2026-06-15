@@ -11,7 +11,9 @@ public class HtmlLauncher {
         WebApplicationConfiguration config = new WebApplicationConfiguration("canvas");
         config.width = 0;
         config.height = 0;
+        config.usePhysicalPixels = true;
         config.showDownloadLogs = true;
+        config.antialiasing = true;
 
         config.preloadListener = assetLoader -> assetLoader.loadScript("freetype.js");
 

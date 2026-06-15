@@ -6,12 +6,16 @@ import com.github.xpenatan.gdx.teavm.backends.web.config.backend.WebBackend;
 import org.teavm.vm.TeaVMOptimizationLevel;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 
 /** Builds the TeaVM JavaScript output and optionally serves it locally. */
 public class BuildWeb {
 
     public static void main(String[] args) {
         boolean startServer = args.length == 0 || !"--no-server".equals(args[0]);
+        File outputDir = new File("build/dist");
 
         WebBackend backend = new WebBackend()
                 .setHtmlTitle("Hidden Gems Deluxe")
@@ -29,6 +33,22 @@ public class BuildWeb {
                 .addReflectionClass("com.badlogic.gdx.scenes.scene2d.ui.**")
                 .addReflectionClass("com.badlogic.gdx.graphics.g2d.freetype.**")
                 .addReflectionClass("com.badlogic.gdx.graphics.g2d.PixmapPacker**")
-                .build(new File("build/dist"));
+                .build(outputDir);
+
+        copyFullViewportIndexHtml(outputDir);
+    }
+
+    /** Replaces the default centered canvas page so the game fills the browser window on resize. */
+    private static void copyFullViewportIndexHtml(File outputDir) {
+        File source = new File("webapp/index.html");
+        File target = new File(outputDir, "webapp/index.html");
+        if (!source.isFile()) {
+            throw new RuntimeException("Missing web index template: " + source.getAbsolutePath());
+        }
+        try {
+            Files.copy(source.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to copy web index.html", e);
+        }
     }
 }
