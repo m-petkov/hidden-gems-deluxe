@@ -1,0 +1,35 @@
+plugins {
+  id 'java-library'
+}
+
+eclipse.project.name = 'html'
+
+java {
+  toolchain {
+    languageVersion = JavaLanguageVersion.of(javaLanguageVersion as int)
+  }
+}
+
+dependencies {
+  implementation project(':core')
+  implementation "com.github.xpenatan.gdx-teavm:backend-shared:$gdxTeaVMVersion"
+  implementation "com.github.xpenatan.gdx-teavm:backend-web:$gdxTeaVMVersion"
+  implementation "com.github.xpenatan.gdx-teavm:gdx-freetype-teavm:$gdxTeaVMVersion"
+}
+
+tasks.register('runWeb', JavaExec) {
+  group = 'gdx-teavm'
+  description = 'Build and serve Hidden Gems Deluxe in the browser'
+  mainClass = 'com.github.mpetkov.hiddengemsdeluxe.html.BuildWeb'
+  classpath = sourceSets.main.runtimeClasspath
+  workingDir = projectDir
+}
+
+tasks.register('buildWeb', JavaExec) {
+  group = 'gdx-teavm'
+  description = 'Build Hidden Gems Deluxe web output without starting the server'
+  mainClass = 'com.github.mpetkov.hiddengemsdeluxe.html.BuildWeb'
+  classpath = sourceSets.main.runtimeClasspath
+  workingDir = projectDir
+  args = ['--no-server']
+}

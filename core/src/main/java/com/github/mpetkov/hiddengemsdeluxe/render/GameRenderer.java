@@ -7,6 +7,7 @@ import com.github.mpetkov.hiddengemsdeluxe.util.ColorMapper;
 import com.github.mpetkov.hiddengemsdeluxe.util.GameConstants;
 
 
+import com.badlogic.gdx.Application;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
@@ -23,8 +24,16 @@ public class GameRenderer {
 
     // Toggle to enable the 3D gem rendering instead of the flat block texture.
     private static final boolean USE_3D_GEMS = true;
-    // Runtime flag that falls back to 2D if 3D init fails.
+    // Runtime flag that falls back to 2D if 3D init fails or the platform cannot handle it (e.g. TeaVM/WebGL).
     private static boolean use3DGemsRuntime = false;
+
+    private static boolean is3DGemsSupported() {
+        return Gdx.app.getType() != Application.ApplicationType.WebGL;
+    }
+
+    public static boolean uses3DGems() {
+        return use3DGemsRuntime;
+    }
 
     // 🔹 За анимацията на неоновия контур
     private static float neonTime = 0f;
@@ -51,13 +60,15 @@ public class GameRenderer {
 
         // Инициализация на 3D рендера за камъните (отделно, за да не скриваме грешки)
         use3DGemsRuntime = false;
-        if (USE_3D_GEMS) {
+        if (USE_3D_GEMS && is3DGemsSupported()) {
             Gem3DRenderer.initialize();
             if (Gem3DRenderer.isInitialized()) {
                 use3DGemsRuntime = true;
             } else {
                 Gdx.app.log("GameRenderer", "3D gems not initialized, falling back to 2D sprites.");
             }
+        } else if (USE_3D_GEMS) {
+            Gdx.app.log("GameRenderer", "3D gems disabled on WebGL, using 2D sprites.");
         }
     }
 

@@ -347,8 +347,10 @@ public class GameScreen implements Screen, InputProcessor {
         background.update(delta);
         background.render(shapeRenderer);
 
-        // Подготовка на 3D рендера за този кадър
-        Gem3DRenderer.beginFrame();
+        // Подготовка на 3D рендера за този кадър (desktop only)
+        if (GameRenderer.uses3DGems()) {
+            Gem3DRenderer.beginFrame();
+        }
 
         if (isAnimating) {
             float speed = isHardDropping ? 20f : 5f;
@@ -395,7 +397,9 @@ public class GameScreen implements Screen, InputProcessor {
             return p.life <= 0;
         });
 
-        Gem3DRenderer.updateEffects(delta);
+        if (GameRenderer.uses3DGems()) {
+            Gem3DRenderer.updateEffects(delta);
+        }
 
         matchMarkers.removeIf(m -> {
             m.update(delta);
@@ -410,8 +414,10 @@ public class GameScreen implements Screen, InputProcessor {
             levelUpTimer, isGameOver, gameOverTimer,
             visualFallingY);
 
-        // Рисуване на всички 3D камъни върху фона
-        Gem3DRenderer.renderAll();
+        // Рисуване на всички 3D камъни върху фона (desktop only)
+        if (GameRenderer.uses3DGems()) {
+            Gem3DRenderer.renderAll();
+        }
 
         // Level Up – само неонов надпис с 3D (без кутия)
         if (levelUpTimer > 0f) {
