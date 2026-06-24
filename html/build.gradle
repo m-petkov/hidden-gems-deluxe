@@ -10,11 +10,21 @@ java {
   }
 }
 
+configurations {
+  serverJarRuntime
+}
+
 dependencies {
   implementation project(':core')
   implementation "com.github.xpenatan.gdx-teavm:backend-shared:$gdxTeaVMVersion"
   implementation "com.github.xpenatan.gdx-teavm:backend-web:$gdxTeaVMVersion"
   implementation "com.github.xpenatan.gdx-teavm:gdx-freetype-teavm:$gdxTeaVMVersion"
+
+  implementation "org.eclipse.jetty:jetty-server:11.0.13"
+  implementation "org.eclipse.jetty:jetty-servlet:11.0.13"
+
+  serverJarRuntime "org.eclipse.jetty:jetty-server:11.0.13"
+  serverJarRuntime "org.eclipse.jetty:jetty-servlet:11.0.13"
 }
 
 tasks.register('runWeb', JavaExec) {
@@ -32,4 +42,35 @@ tasks.register('buildWeb', JavaExec) {
   classpath = sourceSets.main.runtimeClasspath
   workingDir = projectDir
   args = ['--no-server']
+}
+
+tasks.register('serverJar', Jar) {
+  group = 'gdx-teavm'
+  description = 'Build a runnable JAR that serves the web game (Java 25, embedded Jetty)'
+  dependsOn buildWeb, classes
+  archiveFileName.set("${appName}-web-${projectVersion}.jar")
+  duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+
+  manifest {
+    attributes(
+        'Main-Class': 'com.github.mpetkov.hiddengemsdeluxe.html.WebServerLauncher',
+        'Multi-Release': 'true'
+    )
+  }
+
+  from(sourceSets.main.output) {
+    include 'com/github/mpetkov/hiddengemsdeluxe/html/WebServerLauncher.class'
+  }
+  from {
+    configurations.serverJarRuntime.collect { entry ->
+      entry.isDirectory() ? entry : zipTree(entry)
+    }
+  }
+  from("${layout.buildDirectory.get()}/dist/webapp") {
+    into 'webapp'
+  }
+}
+
+tasks.named('jar') {
+  enabled = false
 }
