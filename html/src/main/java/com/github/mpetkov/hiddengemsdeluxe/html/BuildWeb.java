@@ -38,17 +38,39 @@ public class BuildWeb {
         copyFullViewportIndexHtml(outputDir);
     }
 
-    /** Replaces the default centered canvas page so the game fills the browser window on resize. */
+    /** Copies static web shell files into the TeaVM output directory. */
     private static void copyFullViewportIndexHtml(File outputDir) {
-        File source = new File("webapp/index.html");
-        File target = new File(outputDir, "webapp/index.html");
+        File webappDir = new File("webapp");
+        File targetDir = new File(outputDir, "webapp");
+        copyWebFile(webappDir, targetDir, "index.html");
+        copyFavicon(targetDir);
+    }
+
+    private static void copyFavicon(File targetDir) {
+        File source = new File("../lwjgl3/src/main/resources/libgdx128.png");
+        File target = new File(targetDir, "favicon.png");
         if (!source.isFile()) {
-            throw new RuntimeException("Missing web index template: " + source.getAbsolutePath());
+            throw new RuntimeException("Missing desktop icon for favicon: " + source.getAbsolutePath());
         }
         try {
+            targetDir.mkdirs();
             Files.copy(source.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
-            throw new RuntimeException("Failed to copy web index.html", e);
+            throw new RuntimeException("Failed to copy favicon.png", e);
+        }
+    }
+
+    private static void copyWebFile(File sourceDir, File targetDir, String name) {
+        File source = new File(sourceDir, name);
+        File target = new File(targetDir, name);
+        if (!source.isFile()) {
+            throw new RuntimeException("Missing web asset: " + source.getAbsolutePath());
+        }
+        try {
+            targetDir.mkdirs();
+            Files.copy(source.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to copy web asset: " + name, e);
         }
     }
 }
