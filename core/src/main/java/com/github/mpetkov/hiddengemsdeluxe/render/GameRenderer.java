@@ -22,17 +22,6 @@ import java.util.List;
 
 public class GameRenderer {
 
-    public static final String GITHUB_URL = "https://github.com/m-petkov";
-    public static final String GITHUB_LABEL = "github.com/m-petkov";
-    private static final float GITHUB_LINK_SCALE = 0.72f;
-    private static final float GITHUB_LINK_GAP = 10f;
-
-    private static float gitHubLinkX;
-    private static float gitHubLinkY;
-    private static float gitHubLinkW;
-    private static float gitHubLinkH;
-    private static boolean gitHubLinkVisible;
-
     // Toggle to enable the 3D gem rendering instead of the flat block texture.
     private static final boolean USE_3D_GEMS = true;
     // Runtime flag that falls back to 2D if 3D init fails or the platform cannot handle it (e.g. TeaVM/WebGL).
@@ -44,39 +33,6 @@ public class GameRenderer {
 
     public static boolean uses3DGems() {
         return use3DGemsRuntime;
-    }
-
-    public static boolean isGitHubLinkVisible() {
-        return gitHubLinkVisible;
-    }
-
-    public static boolean containsGitHubLink(float worldX, float worldY) {
-        return gitHubLinkVisible
-            && worldX >= gitHubLinkX && worldX <= gitHubLinkX + gitHubLinkW
-            && worldY >= gitHubLinkY && worldY <= gitHubLinkY + gitHubLinkH;
-    }
-
-    private static void drawGitHubLink(BitmapFont font, SpriteBatch batch, float statsRightX, float levelY, float levelTextHeight) {
-        float scaleX = font.getData().scaleX;
-        float scaleY = font.getData().scaleY;
-        font.getData().setScale(scaleX * GITHUB_LINK_SCALE, scaleY * GITHUB_LINK_SCALE);
-
-        GlyphLayout linkLayout = new GlyphLayout(font, GITHUB_LABEL);
-        float linkX = statsRightX - linkLayout.width;
-        float linkY = levelY - levelTextHeight - GITHUB_LINK_GAP;
-
-        font.setColor(0f, 0f, 0f, 0.45f);
-        font.draw(batch, GITHUB_LABEL, linkX + 1, linkY - 1);
-        font.setColor(Color.CYAN);
-        font.draw(batch, GITHUB_LABEL, linkX, linkY);
-
-        gitHubLinkX = linkX;
-        gitHubLinkY = linkY - linkLayout.height;
-        gitHubLinkW = linkLayout.width;
-        gitHubLinkH = linkLayout.height;
-        gitHubLinkVisible = true;
-
-        font.getData().setScale(scaleX, scaleY);
     }
 
     // 🔹 За анимацията на неоновия контур
@@ -359,7 +315,6 @@ public class GameRenderer {
         float previewX = gridOffsetX + GameConstants.COLS * CELL_SIZE + 40;
         float topRowY = gridOffsetY + (GameConstants.ROWS - 1) * CELL_SIZE + CELL_SIZE / 2f;
 
-        gitHubLinkVisible = false;
         batch.begin();
 
         final Color LIME_COLOR = Color.LIME;
@@ -402,8 +357,6 @@ public class GameRenderer {
         font.draw(batch, levelDisplayText, speedX + speedLayout.width - levelLayout.width + 1, levelY - 1);
         font.setColor(LIME_COLOR);
         font.draw(batch, levelDisplayText, speedX + speedLayout.width - levelLayout.width, levelY);
-
-        drawGitHubLink(font, batch, scoreX + scoreLayout.width, levelY, levelLayout.height);
 
         batch.end();
     }

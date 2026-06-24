@@ -27,7 +27,6 @@ import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
 import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
-import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.Timer;
 import com.badlogic.gdx.utils.viewport.FillViewport;
 import com.badlogic.gdx.utils.viewport.FitViewport;
@@ -88,8 +87,6 @@ public class GameScreen implements Screen, InputProcessor {
 
     /** Само едно ускорение надолу на натискане; след отпускане отново се приема. */
     private boolean downKeyReleased = true;
-
-    private final Vector3 touchWorld = new Vector3();
 
     public GameScreen(GameApp game) {
         this.game = game;
@@ -656,28 +653,13 @@ public class GameScreen implements Screen, InputProcessor {
     }
 
     @Override public boolean keyTyped(char character) { return false; }
-    @Override public boolean touchDown(int screenX, int screenY, int pointer, int button) {
-        return openGitHubLinkIfClicked(screenX, screenY);
-    }
+    @Override public boolean touchDown(int screenX, int screenY, int pointer, int button) { return false; }
 
     @Override public boolean touchUp(int screenX, int screenY, int pointer, int button) { return false; }
     @Override public boolean touchDragged(int screenX, int screenY, int pointer) { return false; }
     @Override public boolean touchCancelled(int screenX, int screenY, int pointer, int button) { return false; }
     @Override public boolean mouseMoved(int screenX, int screenY) { return false; }
     @Override public boolean scrolled(float amountX, float amountY) { return false; }
-
-    private boolean openGitHubLinkIfClicked(int screenX, int screenY) {
-        if (viewport == null || !GameRenderer.isGitHubLinkVisible()) {
-            return false;
-        }
-        touchWorld.set(screenX, screenY, 0);
-        viewport.unproject(touchWorld);
-        if (GameRenderer.containsGitHubLink(touchWorld.x, touchWorld.y)) {
-            Gdx.net.openURI(GameRenderer.GITHUB_URL);
-            return true;
-        }
-        return false;
-    }
 
     @Override
     public void resize(int width, int height) {
