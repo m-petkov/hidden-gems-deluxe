@@ -1,10 +1,8 @@
-// AnimatedBackground.java
-
-
 package com.github.mpetkov.hiddengemsdeluxe.render;
 
 import com.github.mpetkov.hiddengemsdeluxe.util.GameConfig;
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
 
@@ -42,16 +40,10 @@ public class AnimatedBackground {
 
     private final List<Orb> orbs = new ArrayList<>();
     private float globalTime = 0f;
-    private final float worldWidth;
-    private final float worldHeight;
+    private float worldWidth = GameConfig.WORLD_WIDTH;
+    private float worldHeight = GameConfig.WORLD_HEIGHT;
 
     public AnimatedBackground() {
-        this(GameConfig.WORLD_WIDTH, GameConfig.WORLD_HEIGHT);
-    }
-
-    public AnimatedBackground(float worldWidth, float worldHeight) {
-        this.worldWidth = worldWidth;
-        this.worldHeight = worldHeight;
     }
 
     private static Color hsvToColor(float h, float s, float v) {
@@ -72,27 +64,35 @@ public class AnimatedBackground {
         return new Color(r, g, b, 1f);
     }
 
-    private void ensureOrbsInitialized() {
-        if (orbs.isEmpty() && worldWidth > 0 && worldHeight > 0) {
-            Random r = new Random();
-            for (int i = 0; i < NUM_ORBS; i++) {
-                float x = r.nextFloat() * worldWidth;
-                float y = r.nextFloat() * worldHeight;
-                float angle = r.nextFloat() * MathUtils.PI2;
-                float speed = ORB_SPEED_MIN + r.nextFloat() * (ORB_SPEED_MAX - ORB_SPEED_MIN);
-                float dx = MathUtils.cos(angle) * speed;
-                float dy = MathUtils.sin(angle) * speed;
-                float phase = r.nextFloat() * MathUtils.PI2;
-                int hueIndex = r.nextInt(ORB_HUES.length);
-                float baseRadius = ORB_RADIUS_MIN + r.nextFloat() * (ORB_RADIUS_MAX - ORB_RADIUS_MIN);
-                orbs.add(new Orb(x, y, dx, dy, phase, hueIndex, baseRadius));
-            }
+    private void ensureOrbsInitialized(float width, float height) {
+        if (width <= 0f || height <= 0f) {
+            return;
+        }
+        if (!orbs.isEmpty() && MathUtils.isEqual(worldWidth, width, 0.5f) && MathUtils.isEqual(worldHeight, height, 0.5f)) {
+            return;
+        }
+        worldWidth = width;
+        worldHeight = height;
+        orbs.clear();
+
+        Random r = new Random();
+        for (int i = 0; i < NUM_ORBS; i++) {
+            float x = r.nextFloat() * worldWidth;
+            float y = r.nextFloat() * worldHeight;
+            float angle = r.nextFloat() * MathUtils.PI2;
+            float speed = ORB_SPEED_MIN + r.nextFloat() * (ORB_SPEED_MAX - ORB_SPEED_MIN);
+            float dx = MathUtils.cos(angle) * speed;
+            float dy = MathUtils.sin(angle) * speed;
+            float phase = r.nextFloat() * MathUtils.PI2;
+            int hueIndex = r.nextInt(ORB_HUES.length);
+            float baseRadius = ORB_RADIUS_MIN + r.nextFloat() * (ORB_RADIUS_MAX - ORB_RADIUS_MIN);
+            orbs.add(new Orb(x, y, dx, dy, phase, hueIndex, baseRadius));
         }
     }
 
     public void update(float delta) {
         globalTime += delta;
-        ensureOrbsInitialized();
+        ensureOrbsInitialized(worldWidth, worldHeight);
         for (Orb o : orbs) {
             o.x += o.dx * delta;
             o.y += o.dy * delta;
@@ -103,15 +103,17 @@ public class AnimatedBackground {
         }
     }
 
-    public void render(ShapeRenderer renderer) {
-        final float W = worldWidth;
-        final float H = worldHeight;
+    /** Рисува фона в координатите на подадената камера (Fill/Fit viewport). */
+    public void render(ShapeRenderer renderer, OrthographicCamera camera) {
+        float left = camera.position.x - camera.viewportWidth / 2f;
+        float bottom = camera.position.y - camera.viewportHeight / 2f;
+        float W = camera.viewportWidth;
+        float H = camera.viewportHeight;
+
+        ensureOrbsInitialized(W, H);
 
         renderer.begin(ShapeRenderer.ShapeType.Filled);
 
-        // ----------------------------------------------------------------------------------
-        // 1. Жив градиент по целия екран (вълна на яркост)
-        // ----------------------------------------------------------------------------------
         final int GRADIENT_STRIPS = 28;
         final float r0 = 0.07f, g0 = 0.02f, b0 = 0.15f;
         final float r1 = 0.01f, g1 = 0.01f, b1 = 0.05f;
@@ -120,22 +122,18 @@ public class AnimatedBackground {
         for (int i = 0; i < GRADIENT_STRIPS; i++) {
             float t0 = (float) i / GRADIENT_STRIPS;
             float t1 = (float) (i + 1) / GRADIENT_STRIPS;
-            float y0 = H * (1f - t0);
-            float y1 = H * (1f - t1);
+            float y0 = bottom + H * (1f - t0);
+            float y1 = bottom + H * (1f - t1);
             float r = r0 + (r1 - r0) * t0;
             float g = g0 + (g1 - g0) * t0;
             float b = b0 + (b1 - b0) * t0;
             float wobble = 0.04f * (wave * MathUtils.sin(t0 * MathUtils.PI) + wave2 * 0.5f);
             renderer.setColor(r + wobble, g + wobble * 0.8f, b + wobble * 1.2f, 1f);
-            renderer.rect(0, y1, W, y0 - y1);
+            renderer.rect(left, y1, W, y0 - y1);
         }
 
         renderer.end();
 
-        // ----------------------------------------------------------------------------------
-        // 2. Плаващи неонови мехури – движат се и пулсират (по-жив ефект)
-        // ----------------------------------------------------------------------------------
-        ensureOrbsInitialized();
         renderer.begin(ShapeRenderer.ShapeType.Filled);
         for (Orb o : orbs) {
             float pulse = 0.85f + 0.25f * MathUtils.sin(globalTime * 1.4f + o.phase);
@@ -143,13 +141,14 @@ public class AnimatedBackground {
             float hue = ORB_HUES[o.hueIndex] + 0.03f * MathUtils.sin(globalTime * 0.7f + o.phase * 2f);
             Color c = hsvToColor(hue % 1f, 0.7f, 0.5f + 0.35f * MathUtils.sin(globalTime * 1.1f + o.phase * 1.5f));
             c.a = 0.08f + 0.18f * (0.5f + 0.5f * MathUtils.sin(globalTime * 1.2f + o.phase));
+            float drawX = left + o.x;
+            float drawY = bottom + o.y;
             renderer.setColor(c);
-            renderer.circle(o.x, o.y, radius);
-            // Външен мек ореол за по-жив вид
+            renderer.circle(drawX, drawY, radius);
             float glowRadius = radius * 1.35f;
             c.a *= 0.4f;
             renderer.setColor(c);
-            renderer.circle(o.x, o.y, glowRadius);
+            renderer.circle(drawX, drawY, glowRadius);
         }
         renderer.end();
     }

@@ -10,6 +10,7 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
+import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
@@ -20,7 +21,9 @@ import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
 import com.badlogic.gdx.scenes.scene2d.*;
 import com.badlogic.gdx.scenes.scene2d.ui.*;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
+import com.badlogic.gdx.utils.viewport.FillViewport;
 import com.badlogic.gdx.utils.viewport.FitViewport;
+import com.badlogic.gdx.utils.viewport.Viewport;
 
 public class WelcomeScreen implements Screen {
 
@@ -29,6 +32,8 @@ public class WelcomeScreen implements Screen {
     private Skin skin;
     private ShapeRenderer shapeRenderer;
     private AnimatedBackground background;
+    private Viewport backgroundViewport;
+    private OrthographicCamera backgroundCamera;
 
     private Label highScoreLabel;
     private Label highLevelLabel;
@@ -43,6 +48,9 @@ public class WelcomeScreen implements Screen {
         Gdx.input.setInputProcessor(stage);
         shapeRenderer = new ShapeRenderer();
         background = new AnimatedBackground();
+        backgroundCamera = new OrthographicCamera();
+        backgroundViewport = new FillViewport(GameConfig.WORLD_WIDTH, GameConfig.WORLD_HEIGHT, backgroundCamera);
+        backgroundViewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
 
         FreeTypeFontGenerator gen = new FreeTypeFontGenerator(Gdx.files.internal("fonts/Play-Regular.ttf"));
         FreeTypeFontGenerator.FreeTypeFontParameter p = new FreeTypeFontGenerator.FreeTypeFontParameter();
@@ -191,10 +199,17 @@ public class WelcomeScreen implements Screen {
     @Override public void render(float delta) {
         Gdx.gl.glClearColor(0f, 0f, 0f, 1f);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
-        stage.getViewport().apply();
-        shapeRenderer.setProjectionMatrix(stage.getViewport().getCamera().combined);
+
+        int screenW = Gdx.graphics.getWidth();
+        int screenH = Gdx.graphics.getHeight();
+        backgroundViewport.update(screenW, screenH, true);
+        backgroundViewport.apply();
+        shapeRenderer.setProjectionMatrix(backgroundCamera.combined);
         background.update(delta);
-        background.render(shapeRenderer);
+        background.render(shapeRenderer, backgroundCamera);
+
+        stage.getViewport().update(screenW, screenH, true);
+        stage.getViewport().apply();
         stage.act(delta);
         stage.draw();
     }
@@ -202,6 +217,9 @@ public class WelcomeScreen implements Screen {
     @Override public void resize(int w, int h) {
         if (stage != null) {
             stage.getViewport().update(w, h, true);
+        }
+        if (backgroundViewport != null) {
+            backgroundViewport.update(w, h, true);
         }
     }
 

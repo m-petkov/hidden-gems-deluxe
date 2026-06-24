@@ -1,5 +1,6 @@
 package com.github.mpetkov.hiddengemsdeluxe.render;
 
+import com.github.mpetkov.hiddengemsdeluxe.util.GameConfig;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
@@ -366,11 +367,13 @@ public class Gem3DRenderer {
                     -0.3f, 0.9f, 0.2f
             ));
 
-            // Use an orthographic camera so world units line up with screen pixels.
-            OrthographicCamera ortho = new OrthographicCamera(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
-            ortho.setToOrtho(false, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
-            ortho.position.set(Gdx.graphics.getWidth() / 2f, Gdx.graphics.getHeight() / 2f, 1000f);
-            ortho.lookAt(Gdx.graphics.getWidth() / 2f, Gdx.graphics.getHeight() / 2f, 0f);
+            // Orthographic camera in the same world units as the FitViewport (1280×720).
+            float worldW = GameConfig.WORLD_WIDTH;
+            float worldH = GameConfig.WORLD_HEIGHT;
+            OrthographicCamera ortho = new OrthographicCamera(worldW, worldH);
+            ortho.setToOrtho(false, worldW, worldH);
+            ortho.position.set(worldW / 2f, worldH / 2f, 1000f);
+            ortho.lookAt(worldW / 2f, worldH / 2f, 0f);
             ortho.near = 1f;
             ortho.far = 2000f;
             ortho.update();
@@ -488,11 +491,34 @@ public class Gem3DRenderer {
         edgeInstances.add(edgeInstance);
     }
 
-    /** Движещи се 3D неонови обекти във фона – пръстени и сфери. */
-    private static void renderMoving3DBackground() {
+    private static OrthographicCamera backgroundOrbCamera;
+
+    /** Движещи се 3D неонови обекти във фона – пръстени и сфери (Fill viewport). */
+    public static void renderBackgroundOrbs(float fillViewportWidth, float fillViewportHeight, float centerX, float centerY) {
+        if (!initialized || modelBatch == null) return;
+        if (fillViewportWidth <= 0f || fillViewportHeight <= 0f) return;
+
+        if (backgroundOrbCamera == null) {
+            backgroundOrbCamera = new OrthographicCamera();
+        }
+
+        Gdx.gl.glDisable(GL20.GL_SCISSOR_TEST);
+
+        OrthographicCamera ortho = backgroundOrbCamera;
+        ortho.setToOrtho(false, fillViewportWidth, fillViewportHeight);
+        ortho.position.set(centerX, centerY, 1000f);
+        ortho.lookAt(centerX, centerY, 0f);
+        ortho.near = 1f;
+        ortho.far = 2000f;
+        ortho.update();
+
+        renderMoving3DBackground(ortho);
+    }
+
+    private static void renderMoving3DBackground(Camera bgCamera) {
         if (neonRingModel == null && neonSphereModel == null) return;
-        float cx = Gdx.graphics.getWidth() / 2f;
-        float cy = Gdx.graphics.getHeight() / 2f;
+        float cx = bgCamera.position.x;
+        float cy = bgCamera.position.y;
         float t = background3DTime;
         Array<ModelInstance> bgInstances = new Array<>();
 
@@ -547,20 +573,18 @@ public class Gem3DRenderer {
         }
 
         if (bgInstances.size > 0) {
-            modelBatch.begin(camera);
+            modelBatch.begin(bgCamera);
             modelBatch.render(bgInstances, environment);
             modelBatch.end();
         }
     }
 
-    /** Render all queued gems and 3D effects. */
+    /** Render all queued gems and 3D effects (Fit viewport). */
     public static void renderAll() {
         if (!initialized || modelBatch == null || camera == null) return;
 
+        Gdx.gl.glDisable(GL20.GL_SCISSOR_TEST);
         camera.update();
-
-        // Първо рисуваме движещите се 3D неонови обекти във фона (зад дъската)
-        renderMoving3DBackground();
 
         modelBatch.begin(camera);
         modelBatch.render(instances, environment);

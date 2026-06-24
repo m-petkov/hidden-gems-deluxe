@@ -29,6 +29,7 @@ import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.Timer;
+import com.badlogic.gdx.utils.viewport.FillViewport;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import com.github.mpetkov.hiddengemsdeluxe.util.SaveManager;
@@ -47,6 +48,8 @@ public class GameScreen implements Screen, InputProcessor {
     private SpriteBatch batch;
     private Viewport viewport;
     private OrthographicCamera camera;
+    private Viewport backgroundViewport;
+    private OrthographicCamera backgroundCamera;
 
     private int CELL_SIZE;
     private int gridOffsetX;
@@ -123,13 +126,19 @@ public class GameScreen implements Screen, InputProcessor {
             if (viewport != null) {
                 viewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
             }
+            if (backgroundViewport != null) {
+                backgroundViewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
+            }
             return;
         }
         wasInitialized = true;
 
         camera = new OrthographicCamera();
         viewport = new FitViewport(GameConfig.WORLD_WIDTH, GameConfig.WORLD_HEIGHT, camera);
+        backgroundCamera = new OrthographicCamera();
+        backgroundViewport = new FillViewport(GameConfig.WORLD_WIDTH, GameConfig.WORLD_HEIGHT, backgroundCamera);
         viewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
+        backgroundViewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
 
         shapeRenderer = new ShapeRenderer();
         batch = new SpriteBatch();
@@ -196,14 +205,48 @@ public class GameScreen implements Screen, InputProcessor {
     }
 
     private void applyViewport() {
+        int screenW = Gdx.graphics.getWidth();
+        int screenH = Gdx.graphics.getHeight();
+        viewport.update(screenW, screenH, true);
         viewport.apply();
         shapeRenderer.setProjectionMatrix(viewport.getCamera().combined);
         batch.setProjectionMatrix(viewport.getCamera().combined);
     }
 
+    private void renderBackground(float delta) {
+        int screenW = Gdx.graphics.getWidth();
+        int screenH = Gdx.graphics.getHeight();
+        backgroundViewport.update(screenW, screenH, true);
+        backgroundViewport.apply();
+        // 2D ShapeRenderer изисква near=0 – 3D pass не трябва да оставя near=1 върху тази камера.
+        backgroundCamera.near = 0f;
+        backgroundCamera.far = 100f;
+        backgroundCamera.up.set(0, 1, 0);
+        backgroundCamera.direction.set(0, 0, -1);
+        backgroundCamera.update();
+        shapeRenderer.setProjectionMatrix(backgroundCamera.combined);
+        background.update(delta);
+        background.render(shapeRenderer, backgroundCamera);
+    }
+
     private void renderHudOverlay() {
         batch.setProjectionMatrix(viewport.getCamera().combined);
         GameRenderer.renderHud(batch, font, gridOffsetX, gridOffsetY, CELL_SIZE, score, level, currentDropInterval);
+    }
+
+    /** 3D фонови орби (Fill) + камъни/ефекти (Fit) с актуален viewport при resize. */
+    private void render3DScene() {
+        int screenW = Gdx.graphics.getWidth();
+        int screenH = Gdx.graphics.getHeight();
+        backgroundViewport.update(screenW, screenH, true);
+        backgroundViewport.apply();
+        Gem3DRenderer.renderBackgroundOrbs(
+                backgroundCamera.viewportWidth,
+                backgroundCamera.viewportHeight,
+                backgroundCamera.position.x,
+                backgroundCamera.position.y);
+        applyViewport();
+        Gem3DRenderer.renderAll();
     }
 
     private void scheduleDrop(float interval) {
@@ -315,14 +358,11 @@ public class GameScreen implements Screen, InputProcessor {
         // Clear both color and depth so 3D gems render correctly.
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT | GL20.GL_DEPTH_BUFFER_BIT);
 
+        renderBackground(delta);
         applyViewport();
 
         // Check for game over early and skip all game logic
         if (isGameOver) {
-            // Only update background and render game over text
-            background.update(delta);
-            background.render(shapeRenderer);
-            
             if (GameRenderer.uses3DGems()) {
                 Gem3DRenderer.beginFrame();
             }
@@ -337,7 +377,7 @@ public class GameScreen implements Screen, InputProcessor {
                 visualFallingY);
 
             if (GameRenderer.uses3DGems()) {
-                Gem3DRenderer.renderAll();
+                render3DScene();
             }
             renderHudOverlay();
 
@@ -389,9 +429,6 @@ public class GameScreen implements Screen, InputProcessor {
         }
 
         // Normal game logic continues here
-        background.update(delta);
-        background.render(shapeRenderer);
-
         // Подготовка на 3D рендера за този кадър (desktop only)
         if (GameRenderer.uses3DGems()) {
             Gem3DRenderer.beginFrame();
@@ -461,7 +498,7 @@ public class GameScreen implements Screen, InputProcessor {
 
         // Рисуване на всички 3D камъни върху фона (desktop only)
         if (GameRenderer.uses3DGems()) {
-            Gem3DRenderer.renderAll();
+            render3DScene();
         }
 
         renderHudOverlay();
@@ -646,6 +683,9 @@ public class GameScreen implements Screen, InputProcessor {
     public void resize(int width, int height) {
         if (viewport != null) {
             viewport.update(width, height, true);
+        }
+        if (backgroundViewport != null) {
+            backgroundViewport.update(width, height, true);
         }
         if (GameRenderer.uses3DGems()) {
             Gem3DRenderer.resize(GameConfig.WORLD_WIDTH, GameConfig.WORLD_HEIGHT);
