@@ -2,7 +2,7 @@ package com.github.mpetkov.hiddengemsdeluxe.screen;
 
 import com.github.mpetkov.hiddengemsdeluxe.GameApp;
 import com.github.mpetkov.hiddengemsdeluxe.render.AnimatedBackground;
-import com.github.mpetkov.hiddengemsdeluxe.util.GameConfig;
+import com.github.mpetkov.hiddengemsdeluxe.util.MobileWebLayout;
 import com.github.mpetkov.hiddengemsdeluxe.util.SaveManager;
 
 import com.badlogic.gdx.Application;
@@ -37,6 +37,7 @@ public class WelcomeScreen implements Screen {
 
     private Label highScoreLabel;
     private Label highLevelLabel;
+    private MobileWebLayout.Mode layoutMode = MobileWebLayout.Mode.DESKTOP;
 
     public WelcomeScreen(GameApp game) {
         this.game = game;
@@ -44,30 +45,47 @@ public class WelcomeScreen implements Screen {
 
     @Override
     public void show() {
-        stage = new Stage(new FitViewport(GameConfig.WORLD_WIDTH, GameConfig.WORLD_HEIGHT));
-        Gdx.input.setInputProcessor(stage);
+        layoutMode = MobileWebLayout.resolveMode();
+        buildScreen(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+    }
+
+    private void buildScreen(int screenW, int screenH) {
+        disposeUi();
+
         shapeRenderer = new ShapeRenderer();
         background = new AnimatedBackground();
         backgroundCamera = new OrthographicCamera();
-        backgroundViewport = new FillViewport(GameConfig.WORLD_WIDTH, GameConfig.WORLD_HEIGHT, backgroundCamera);
-        backgroundViewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
+
+        MobileWebLayout.WelcomeLayout wl = MobileWebLayout.welcomeLayout(layoutMode);
+        backgroundViewport = new FillViewport(wl.worldWidth, wl.worldHeight, backgroundCamera);
+
+        Viewport stageViewport = wl.fillViewport
+                ? new FillViewport(wl.worldWidth, wl.worldHeight, new OrthographicCamera())
+                : new FitViewport(wl.worldWidth, wl.worldHeight, new OrthographicCamera());
+        stage = new Stage(stageViewport);
+        Gdx.input.setInputProcessor(stage);
+
+        float fontScale = MobileWebLayout.isWeb() ? Math.min(MobileWebLayout.getPixelRatio(), 2f) : 1f;
+        int fontSize = Math.round(wl.fontSize * fontScale);
 
         FreeTypeFontGenerator gen = new FreeTypeFontGenerator(Gdx.files.internal("fonts/Play-Regular.ttf"));
         FreeTypeFontGenerator.FreeTypeFontParameter p = new FreeTypeFontGenerator.FreeTypeFontParameter();
-        p.size = 32;
+        p.size = fontSize;
         p.color = Color.CYAN;
         BitmapFont font = gen.generateFont(p);
+        if (font.getRegion() != null && font.getRegion().getTexture() != null) {
+            font.getRegion().getTexture().setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
+        }
         gen.dispose();
 
         skin = new Skin();
         skin.add("default-font", font);
 
-        // Плътни lime бутони – форма „пилюла“, 3D ефект + hover
-        int btnW = 320;
-        int btnH = 56;
-        Texture btnUpTex = createLime3DButton(btnW, btnH, true, false);   // издигнат
-        Texture btnDownTex = createLime3DButton(btnW, btnH, false, false); // натиснат
-        Texture btnOverTex = createLime3DButton(btnW, btnH, true, true);  // hover – по-ярък
+        int btnW = wl.btnWidth;
+        int btnH = wl.btnHeight;
+        Texture btnUpTex = createLime3DButton(btnW, btnH, true, false);
+        Texture btnDownTex = createLime3DButton(btnW, btnH, false, false);
+        Texture btnOverTex = createLime3DButton(btnW, btnH, true, true);
         skin.add("btn-up", btnUpTex);
         skin.add("btn-down", btnDownTex);
         skin.add("btn-over", btnOverTex);
@@ -76,7 +94,7 @@ public class WelcomeScreen implements Screen {
         style.font = font;
         style.fontColor = new Color(0.15f, 0.35f, 0.05f, 1f);
         style.downFontColor = new Color(0.12f, 0.3f, 0.02f, 1f);
-        style.overFontColor = new Color(0.1f, 0.4f, 0.02f, 1f);  // леко по-ярък текст при hover
+        style.overFontColor = new Color(0.1f, 0.4f, 0.02f, 1f);
         style.up = new TextureRegionDrawable(new TextureRegion(btnUpTex));
         style.down = new TextureRegionDrawable(new TextureRegion(btnDownTex));
         style.over = new TextureRegionDrawable(new TextureRegion(btnOverTex));
@@ -121,17 +139,17 @@ public class WelcomeScreen implements Screen {
             }
         });
 
-        table.top().padTop(80);
-        table.add(title).padBottom(40).row();
-        table.add(highScoreLabel).padBottom(10).row();
-        table.add(highLevelLabel).padBottom(30).row();
+        table.top().padTop(wl.padTop);
+        table.add(title).padBottom(wl.titlePadBottom).row();
+        table.add(highScoreLabel).padBottom(wl.rowPad).row();
+        table.add(highLevelLabel).padBottom(wl.rowPad * 2).row();
 
         if (game.isPaused) {
-            table.add(resume).padBottom(20).row();
+            table.add(resume).width(btnW).height(btnH).padBottom(wl.rowPad).row();
         }
 
-        table.add(start).padBottom(15).row();
-        table.add(reset).padBottom(15).row();
+        table.add(start).width(btnW).height(btnH).padBottom(wl.rowPad).row();
+        table.add(reset).width(btnW).height(btnH).padBottom(wl.rowPad).row();
 
         if (Gdx.app.getType() != Application.ApplicationType.WebGL) {
             TextButton exit = new TextButton("Exit", skin);
@@ -141,10 +159,19 @@ public class WelcomeScreen implements Screen {
                     Gdx.app.exit();
                 }
             });
-            table.add(exit);
+            table.add(exit).width(btnW).height(btnH);
         }
 
-        stage.getViewport().update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
+        applyViewport(screenW, screenH);
+    }
+
+    private void applyViewport(int screenW, int screenH) {
+        if (backgroundViewport != null) {
+            backgroundViewport.update(screenW, screenH, true);
+        }
+        if (stage != null) {
+            stage.getViewport().update(screenW, screenH, true);
+        }
     }
 
     /** Плътен lime бутон – форма „пилюла“ (напълно закръглени краища), 3D ефект. */
@@ -155,21 +182,18 @@ public class WelcomeScreen implements Screen {
         int r = h / 2;
 
         if (raised && !hover) {
-            // Издигнат (нормален)
             fillPill(p, 0, 0, w, h, r, 0.45f, 1f, 0.12f, BUTTON_ALPHA);
             p.setColor(new Color(0.72f, 1f, 0.4f, BUTTON_ALPHA));
             p.fillRectangle(r, 0, w - 2 * r, 4);
             p.setColor(new Color(0.18f, 0.6f, 0f, BUTTON_ALPHA));
             p.fillRectangle(r, h - 5, w - 2 * r, 5);
         } else if (raised && hover) {
-            // Hover – по-ярък lime, по-силен highlight отгоре
             fillPill(p, 0, 0, w, h, r, 0.52f, 1f, 0.2f, BUTTON_ALPHA);
             p.setColor(new Color(0.82f, 1f, 0.5f, BUTTON_ALPHA));
             p.fillRectangle(r, 0, w - 2 * r, 5);
             p.setColor(new Color(0.22f, 0.7f, 0.05f, BUTTON_ALPHA));
             p.fillRectangle(r, h - 5, w - 2 * r, 5);
         } else {
-            // Натиснат
             fillPill(p, 0, 0, w, h, r, 0.28f, 0.82f, 0.05f, BUTTON_ALPHA);
             p.setColor(new Color(0.12f, 0.5f, 0f, BUTTON_ALPHA));
             p.fillRectangle(r, 0, w - 2 * r, 5);
@@ -183,7 +207,6 @@ public class WelcomeScreen implements Screen {
         return tex;
     }
 
-    /** Запълва форма „пилюла“ (капсула): правоъгълник + два полукръга в краищата. */
     private void fillPill(Pixmap p, int x, int y, int w, int h, int r,
             float cr, float cg, float cb, float ca) {
         int ir = (int) (cr * 255);
@@ -215,11 +238,12 @@ public class WelcomeScreen implements Screen {
     }
 
     @Override public void resize(int w, int h) {
-        if (stage != null) {
-            stage.getViewport().update(w, h, true);
-        }
-        if (backgroundViewport != null) {
-            backgroundViewport.update(w, h, true);
+        MobileWebLayout.Mode newMode = MobileWebLayout.resolveMode();
+        if (newMode != layoutMode) {
+            layoutMode = newMode;
+            buildScreen(w, h);
+        } else {
+            applyViewport(w, h);
         }
     }
 
@@ -227,8 +251,7 @@ public class WelcomeScreen implements Screen {
     @Override public void resume() {}
     @Override public void hide() {}
 
-    @Override
-    public void dispose() {
+    private void disposeUi() {
         if (shapeRenderer != null) {
             shapeRenderer.dispose();
             shapeRenderer = null;
@@ -241,5 +264,10 @@ public class WelcomeScreen implements Screen {
             skin.dispose();
             skin = null;
         }
+    }
+
+    @Override
+    public void dispose() {
+        disposeUi();
     }
 }

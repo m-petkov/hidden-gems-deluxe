@@ -16,31 +16,34 @@ public final class WebCanvasSync {
     @JSBody(script = "return Math.max(1, window.innerHeight || document.documentElement.clientHeight || 1);")
     public static native int viewportHeight();
 
+    @JSBody(script = "return Math.max(1, window.devicePixelRatio || 1);")
+    public static native float devicePixelRatio();
+
     /**
-     * Resizes the canvas drawing buffer to match the viewport.
+     * Sets CSS display size and the high-DPI drawing buffer separately.
      * @return true when the buffer size changed
      */
-    @JSBody(params = {"canvasId", "width", "height"}, script = ""
+    @JSBody(params = {"canvasId", "cssW", "cssH", "bufferW", "bufferH"}, script = ""
             + "var canvas = document.getElementById(canvasId);\n"
             + "if (!canvas) { return false; }\n"
-            + "var w = width | 0;\n"
-            + "var h = height | 0;\n"
-            + "if (w <= 0 || h <= 0) { return false; }\n"
-            + "var changed = canvas.width !== w || canvas.height !== h;\n"
-            + "if (changed) {\n"
-            + "  canvas.width = w;\n"
-            + "  canvas.height = h;\n"
-            + "}\n"
-            + "canvas.style.width = '';\n"
-            + "canvas.style.height = '';\n"
+            + "var cssW = cssW | 0;\n"
+            + "var cssH = cssH | 0;\n"
+            + "var bufferW = bufferW | 0;\n"
+            + "var bufferH = bufferH | 0;\n"
+            + "if (cssW <= 0 || cssH <= 0 || bufferW <= 0 || bufferH <= 0) { return false; }\n"
+            + "var changed = canvas.width !== bufferW || canvas.height !== bufferH;\n"
+            + "canvas.width = bufferW;\n"
+            + "canvas.height = bufferH;\n"
+            + "canvas.style.width = cssW + 'px';\n"
+            + "canvas.style.height = cssH + 'px';\n"
             + "canvas.style.display = 'block';\n"
             + "canvas.style.margin = '0';\n"
             + "canvas.style.padding = '0';\n"
             + "canvas.style.border = 'none';\n"
             + "return changed;\n")
-    public static native boolean resizeCanvasBuffer(String canvasId, int width, int height);
+    public static native boolean resizeCanvasBuffer(String canvasId, int cssW, int cssH, int bufferW, int bufferH);
 
-    public static boolean resizeCanvasBuffer(int width, int height) {
-        return resizeCanvasBuffer(CANVAS_ID, width, height);
+    public static boolean resizeCanvasBuffer(int cssW, int cssH, int bufferW, int bufferH) {
+        return resizeCanvasBuffer(CANVAS_ID, cssW, cssH, bufferW, bufferH);
     }
 }

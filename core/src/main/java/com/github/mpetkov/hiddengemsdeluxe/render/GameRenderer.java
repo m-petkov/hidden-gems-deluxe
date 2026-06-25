@@ -53,6 +53,7 @@ public class GameRenderer {
         try {
             if (blockTexture == null) {
                 blockTexture = new Texture(Gdx.files.internal("block.png"));
+                blockTexture.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
             }
         } catch (Exception e) {
             Gdx.app.error("GameRenderer", "Грешка при зареждане на block.png. Уверете се, че файлът е в 'assets/': " + e.getMessage());
@@ -126,7 +127,8 @@ public class GameRenderer {
                                   List<Particle> particles, List<MatchMarker> matchMarkers,
                                   int score, int level, float currentDropInterval,
                                   float levelUpTimer, boolean isGameOver, float gameOverTimer,
-                                  float visualFallingY) {
+                                  float visualFallingY, boolean compactMobile,
+                                  float nextGemsStartX, float nextGemsY, int nextGemCellSize) {
 
         // === Обновяване на неоновите настройки ===
         neonTime += Gdx.graphics.getDeltaTime() * 1.5f;
@@ -227,11 +229,22 @@ public class GameRenderer {
         }
 
         // "Next:" блок (и при 2D, и при 3D – само позициите се подават)
-        float previewX = gridOffsetX + GameConstants.COLS * CELL_SIZE + 40;
-        float nextBlockY = gridOffsetY + (GameConstants.ROWS - 2) * CELL_SIZE;
+        float previewX;
+        float nextBlockY;
+        int previewCellSize = CELL_SIZE;
+        if (compactMobile) {
+            previewCellSize = nextGemCellSize > 0 ? nextGemCellSize : Math.max(18, (int) (CELL_SIZE * 0.34f));
+            previewX = nextGemsStartX;
+            nextBlockY = nextGemsY;
+        } else {
+            previewX = gridOffsetX + GameConstants.COLS * CELL_SIZE + 40;
+            nextBlockY = gridOffsetY + (GameConstants.ROWS - 2) * CELL_SIZE;
+        }
+        float gemGap = previewCellSize * 0.24f;
         for (int i = 0; i < 3; i++) {
-            float y = nextBlockY - i * CELL_SIZE;
-            drawBlock(batch, previewX, y, CELL_SIZE, ColorMapper.getColor(fallingBlock.getNextColors()[i]), 
+            float x = compactMobile ? previewX + i * (previewCellSize + gemGap) : previewX;
+            float y = compactMobile ? nextBlockY : nextBlockY - i * CELL_SIZE;
+            drawBlock(batch, x, y, previewCellSize, ColorMapper.getColor(fallingBlock.getNextColors()[i]),
                 GameConstants.ROWS + i, GameConstants.COLS + 1, false);
         }
 
@@ -311,7 +324,20 @@ public class GameRenderer {
 
     public static void renderHud(SpriteBatch batch, BitmapFont font,
                                    int gridOffsetX, int gridOffsetY, int CELL_SIZE,
-                                   int score, int level, float currentDropInterval) {
+                                   int score, int level, float currentDropInterval,
+                                   boolean compactMobile, float hudBaselineY,
+                                   float nextGemsStartX, int nextGemCellSize,
+                                   boolean hudVertical, float hudLineHeight, float hudLineGap,
+                                   float nextGemsY, float hudTextX,
+                                   float hudScoreY, float hudLevelY, float hudSpeedY, float hudNextRowY) {
+        if (compactMobile) {
+            renderHudCompact(batch, font, score, level, currentDropInterval,
+                    gridOffsetX, hudBaselineY, nextGemsStartX, nextGemCellSize, nextGemsY,
+                    hudVertical, hudLineHeight, hudLineGap, hudTextX,
+                    hudScoreY, hudLevelY, hudSpeedY, hudNextRowY);
+            return;
+        }
+
         float previewX = gridOffsetX + GameConstants.COLS * CELL_SIZE + 40;
         float topRowY = gridOffsetY + (GameConstants.ROWS - 1) * CELL_SIZE + CELL_SIZE / 2f;
 
@@ -359,6 +385,57 @@ public class GameRenderer {
         font.draw(batch, levelDisplayText, speedX + speedLayout.width - levelLayout.width, levelY);
 
         batch.end();
+    }
+
+    private static void renderHudCompact(SpriteBatch batch, BitmapFont font,
+                                         int score, int level, float currentDropInterval,
+                                         int gridOffsetX, float hudBaselineY,
+                                         float nextGemsStartX, int nextGemCellSize, float nextGemsY,
+                                         boolean hudVertical, float hudLineHeight, float hudLineGap,
+                                         float hudTextX, float hudScoreY, float hudLevelY,
+                                         float hudSpeedY, float hudNextRowY) {
+        batch.begin();
+        final Color LIME_COLOR = Color.LIME;
+
+        if (hudVertical) {
+            float x = hudTextX;
+            drawShadowedText(batch, font, "Score: " + score, x, hudScoreY, LIME_COLOR);
+            drawShadowedText(batch, font, "Level: " + level, x, hudLevelY, LIME_COLOR);
+            drawShadowedText(batch, font, String.format("Speed: %.2f s", currentDropInterval), x, hudSpeedY, LIME_COLOR);
+            drawShadowedText(batch, font, "Next", x, hudNextRowY, LIME_COLOR);
+        } else {
+            float y = hudBaselineY;
+            float x = gridOffsetX;
+
+            String scoreText = "Score: " + score;
+            GlyphLayout scoreLayout = new GlyphLayout(font, scoreText);
+            drawShadowedText(batch, font, scoreText, x, y, LIME_COLOR);
+            x += scoreLayout.width + 18f;
+
+            String levelText = "Lv " + level;
+            GlyphLayout levelLayout = new GlyphLayout(font, levelText);
+            drawShadowedText(batch, font, levelText, x, y, LIME_COLOR);
+            x += levelLayout.width + 16f;
+
+            String speedText = String.format("%.2fs", currentDropInterval);
+            drawShadowedText(batch, font, speedText, x, y, LIME_COLOR);
+
+            String nextText = "Next";
+            GlyphLayout nextLayout = new GlyphLayout(font, nextText);
+            float nextX = nextGemsStartX - nextLayout.width - 10f;
+            float nextY = y + (nextGemCellSize * 0.18f);
+            drawShadowedText(batch, font, nextText, nextX, nextY, LIME_COLOR);
+        }
+
+        batch.end();
+    }
+
+    private static void drawShadowedText(SpriteBatch batch, BitmapFont font, String text,
+                                         float x, float y, Color color) {
+        font.setColor(0, 0, 0, 0.5f);
+        font.draw(batch, text, x + 1, y - 1);
+        font.setColor(color);
+        font.draw(batch, text, x, y);
     }
 
     // 🔹 ПОМОЩЕН МЕТОД за изчисляване на цвета на база фазата

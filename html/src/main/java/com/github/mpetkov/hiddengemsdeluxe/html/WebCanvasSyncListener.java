@@ -1,5 +1,6 @@
 package com.github.mpetkov.hiddengemsdeluxe.html;
 
+import com.github.mpetkov.hiddengemsdeluxe.util.MobileWebLayout;
 import com.badlogic.gdx.ApplicationListener;
 import com.badlogic.gdx.Gdx;
 import org.teavm.jso.browser.Window;
@@ -28,8 +29,8 @@ public class WebCanvasSyncListener implements ApplicationListener {
                 }
             }
         });
-        delegate.create();
         syncCanvas();
+        delegate.create();
     }
 
     @Override
@@ -60,14 +61,23 @@ public class WebCanvasSyncListener implements ApplicationListener {
     }
 
     private void syncCanvas() {
-        int w = WebCanvasSync.viewportWidth();
-        int h = WebCanvasSync.viewportHeight();
-        if (w <= 0 || h <= 0) {
+        int cssW = WebCanvasSync.viewportWidth();
+        int cssH = WebCanvasSync.viewportHeight();
+        float dpr = WebCanvasSync.devicePixelRatio();
+        MobileWebLayout.setCssSize(cssW, cssH);
+        MobileWebLayout.setPixelRatio(dpr);
+
+        int bufferW = Math.max(1, Math.round(cssW * dpr));
+        int bufferH = Math.max(1, Math.round(cssH * dpr));
+
+        WebCanvasSync.resizeCanvasBuffer(cssW, cssH, bufferW, bufferH);
+
+        if (bufferW <= 0 || bufferH <= 0) {
             return;
         }
-        if (Gdx.graphics.getWidth() == w && Gdx.graphics.getHeight() == h) {
+        if (Gdx.graphics.getWidth() == bufferW && Gdx.graphics.getHeight() == bufferH) {
             return;
         }
-        Gdx.graphics.setWindowedMode(w, h);
+        Gdx.graphics.setWindowedMode(bufferW, bufferH);
     }
 }

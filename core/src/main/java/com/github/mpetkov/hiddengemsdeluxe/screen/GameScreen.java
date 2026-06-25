@@ -8,8 +8,8 @@ import com.github.mpetkov.hiddengemsdeluxe.model.Particle;
 import com.github.mpetkov.hiddengemsdeluxe.render.AnimatedBackground;
 import com.github.mpetkov.hiddengemsdeluxe.render.GameRenderer;
 import com.github.mpetkov.hiddengemsdeluxe.render.Gem3DRenderer;
+import com.github.mpetkov.hiddengemsdeluxe.render.TouchControlsOverlay;
 import com.github.mpetkov.hiddengemsdeluxe.util.ColorMapper;
-import com.github.mpetkov.hiddengemsdeluxe.util.GameConfig;
 import com.github.mpetkov.hiddengemsdeluxe.util.GameConstants;
 
 
@@ -27,10 +27,13 @@ import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
 import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.Timer;
 import com.badlogic.gdx.utils.viewport.FillViewport;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
+import com.github.mpetkov.hiddengemsdeluxe.util.MobileWebLayout;
+import com.github.mpetkov.hiddengemsdeluxe.util.PhonePortraitHud;
 import com.github.mpetkov.hiddengemsdeluxe.util.SaveManager;
 
 import java.util.ArrayList;
@@ -88,6 +91,27 @@ public class GameScreen implements Screen, InputProcessor {
     /** Само едно ускорение надолу на натискане; след отпускане отново се приема. */
     private boolean downKeyReleased = true;
 
+    private TouchControlsOverlay touchControls;
+    private final Vector3 touchWorld = new Vector3();
+
+    private MobileWebLayout.Mode mobileLayoutMode = MobileWebLayout.Mode.DESKTOP;
+    private boolean compactHud;
+    private boolean hudVertical;
+    private float hudBaselineY;
+    private float hudLineHeight;
+    private float hudLineGap;
+    private float hudTextX;
+    private float hudScoreY;
+    private float hudLevelY;
+    private float hudSpeedY;
+    private float hudNextRowY;
+    private float hudRowSpacing;
+    private float nextGemsStartX;
+    private float nextGemsY;
+    private int nextGemCellSize;
+    private PhonePortraitHud.Metrics phoneHud;
+    private int fontReferenceCellSize = -1;
+
     public GameScreen(GameApp game) {
         this.game = game;
     }
@@ -120,22 +144,18 @@ public class GameScreen implements Screen, InputProcessor {
         downKeyReleased = true; // винаги готови за натискане при показване на екрана
 
         if (wasInitialized) {
-            if (viewport != null) {
-                viewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
-            }
-            if (backgroundViewport != null) {
-                backgroundViewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
-            }
+            setupGameViewport(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+            updateLayout();
+            updateFontScale();
+            initTouchControls();
+            updateLayout();
             return;
         }
         wasInitialized = true;
 
         camera = new OrthographicCamera();
-        viewport = new FitViewport(GameConfig.WORLD_WIDTH, GameConfig.WORLD_HEIGHT, camera);
         backgroundCamera = new OrthographicCamera();
-        backgroundViewport = new FillViewport(GameConfig.WORLD_WIDTH, GameConfig.WORLD_HEIGHT, backgroundCamera);
-        viewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
-        backgroundViewport.update(Gdx.graphics.getWidth(), Gdx.graphics.getHeight(), true);
+        setupGameViewport(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 
         shapeRenderer = new ShapeRenderer();
         batch = new SpriteBatch();
@@ -149,7 +169,8 @@ public class GameScreen implements Screen, InputProcessor {
 
         FreeTypeFontGenerator generator = new FreeTypeFontGenerator(Gdx.files.internal("fonts/Play-Regular.ttf"));
         FreeTypeFontGenerator.FreeTypeFontParameter parameter = new FreeTypeFontGenerator.FreeTypeFontParameter();
-        parameter.size = (int)(CELL_SIZE * 0.5f);
+        parameter.size = Math.max(20, (int) (CELL_SIZE * 0.5f * Math.min(MobileWebLayout.getPixelRatio(), 2.5f)));
+        fontReferenceCellSize = CELL_SIZE;
         parameter.color = Color.WHITE;
         parameter.shadowOffsetX = 2;
         parameter.shadowOffsetY = 2;
@@ -181,24 +202,147 @@ public class GameScreen implements Screen, InputProcessor {
         level = 1;
         currentDropInterval = getDropIntervalForLevel(level);
         scheduleDrop(currentDropInterval);
+        initTouchControls();
+        updateLayout();
+    }
+
+    private void initTouchControls() {
+        if (!TouchControlsOverlay.isEnabled()) {
+            touchControls = null;
+            return;
+        }
+        touchControls = new TouchControlsOverlay(new TouchControlsOverlay.Actions() {
+            @Override public void onMoveLeft() { handleMoveLeft(); }
+            @Override public void onMoveRight() { handleMoveRight(); }
+            @Override public void onRotate() { handleRotate(); }
+            @Override public void onDownPressed() { handleDownPressed(); }
+            @Override public void onDownReleased() { handleDownReleased(); }
+            @Override public void onPause() { handlePause(); }
+        });
+    }
+
+    private void renderTouchControls() {
+        if (touchControls == null) {
+            return;
+        }
+        shapeRenderer.setProjectionMatrix(viewport.getCamera().combined);
+        touchControls.render(shapeRenderer);
+    }
+
+    private void unprojectTouch(int screenX, int screenY) {
+        touchWorld.set(screenX, screenY, 0f);
+        viewport.unproject(touchWorld);
+    }
+
+    private void setupGameViewport(int screenW, int screenH) {
+        MobileWebLayout.Mode newMode = MobileWebLayout.resolveMode();
+        float worldW = MobileWebLayout.worldWidth(newMode);
+        float worldH = MobileWebLayout.worldHeight(newMode);
+
+        if (viewport == null || newMode != mobileLayoutMode) {
+            mobileLayoutMode = newMode;
+            if (MobileWebLayout.useFillViewport(mobileLayoutMode)) {
+                viewport = new FillViewport(worldW, worldH, camera);
+            } else {
+                viewport = new FitViewport(worldW, worldH, camera);
+            }
+            backgroundViewport = new FillViewport(worldW, worldH, backgroundCamera);
+        } else {
+            viewport.setWorldWidth(worldW);
+            viewport.setWorldHeight(worldH);
+            backgroundViewport.setWorldWidth(worldW);
+            backgroundViewport.setWorldHeight(worldH);
+        }
+
+        viewport.update(screenW, screenH, true);
+        backgroundViewport.update(screenW, screenH, true);
+
+        if (GameRenderer.uses3DGems()) {
+            Gem3DRenderer.resize((int) worldW, (int) worldH);
+        }
+    }
+
+    private void updateFontScale() {
+        if (font == null || fontReferenceCellSize <= 0) {
+            return;
+        }
+        if (phoneHud != null) {
+            return;
+        }
+        if (compactHud && hudVertical) {
+            if (MobileWebLayout.isMobileWeb()) {
+                float targetLine = Math.max(20f, hudLineHeight);
+                float scale = targetLine / Math.max(1f, font.getLineHeight());
+                font.getData().setScale(Math.max(0.52f, Math.min(scale, 0.88f)));
+            } else {
+                float targetLine = Math.max(1f, font.getLineHeight());
+                float scale = (hudLineHeight / targetLine) * 0.82f;
+                font.getData().setScale(Math.max(0.62f, Math.min(scale, 1.05f)));
+            }
+        } else {
+            font.getData().setScale((float) CELL_SIZE / fontReferenceCellSize);
+        }
     }
 
     private void updateLayout() {
-        final int PADDING = 20;
-        final int SIDE_COLS = 2;
-        final int width = GameConfig.WORLD_WIDTH;
-        final int height = GameConfig.WORLD_HEIGHT;
+        OrthographicCamera cam = (OrthographicCamera) viewport.getCamera();
+        MobileWebLayout.Layout layout = MobileWebLayout.compute(
+                mobileLayoutMode,
+                cam.viewportWidth,
+                cam.viewportHeight,
+                cam.position.x,
+                cam.position.y);
 
-        int heightCell = (height - 2 * PADDING) / GameConstants.ROWS;
-        int widthCell = (width - 2 * PADDING) / (GameConstants.COLS + SIDE_COLS);
-        CELL_SIZE = Math.min(heightCell, widthCell);
+        CELL_SIZE = layout.cellSize;
+        gridOffsetX = layout.gridOffsetX;
+        gridOffsetY = layout.gridOffsetY;
+        compactHud = layout.compactHud;
+        hudVertical = layout.hudVertical;
+        hudBaselineY = layout.hudBaselineY;
+        hudLineHeight = layout.hudLineHeight;
+        hudLineGap = layout.hudLineGap;
+        hudTextX = layout.hudTextX;
+        hudScoreY = layout.hudScoreY;
+        hudLevelY = layout.hudLevelY;
+        hudSpeedY = layout.hudSpeedY;
+        hudNextRowY = layout.hudNextRowY;
+        hudRowSpacing = layout.hudRowSpacing;
+        nextGemsStartX = layout.nextGemsStartX;
+        nextGemsY = layout.nextGemsY;
+        nextGemCellSize = layout.nextGemCellSize;
 
-        int gridWidth = GameConstants.COLS * CELL_SIZE;
-        int gridHeight = GameConstants.ROWS * CELL_SIZE;
-        int totalGameWidth = gridWidth + SIDE_COLS * CELL_SIZE;
+        phoneHud = null;
+        if (mobileLayoutMode == MobileWebLayout.Mode.MOBILE_PORTRAIT
+                && MobileWebLayout.isMobileWeb()
+                && font != null) {
+            phoneHud = PhonePortraitHud.apply(
+                    layout,
+                    font,
+                    cam.viewportWidth,
+                    cam.viewportHeight,
+                    cam.position.x,
+                    cam.position.y);
+            CELL_SIZE = layout.cellSize;
+            gridOffsetX = layout.gridOffsetX;
+            gridOffsetY = layout.gridOffsetY;
+            hudTextX = layout.hudTextX;
+            hudScoreY = layout.hudScoreY;
+            hudLevelY = layout.hudLevelY;
+            hudSpeedY = layout.hudSpeedY;
+            hudNextRowY = layout.hudNextRowY;
+            hudRowSpacing = layout.hudRowSpacing;
+            hudLineHeight = layout.hudLineHeight;
+            hudLineGap = layout.hudLineGap;
+            nextGemsStartX = layout.nextGemsStartX;
+            nextGemsY = layout.nextGemsY;
+            nextGemCellSize = layout.nextGemCellSize;
+        }
 
-        gridOffsetY = (height - gridHeight) / 2;
-        gridOffsetX = Math.max(PADDING, (width - totalGameWidth) / 2);
+        updateFontScale();
+
+        if (touchControls != null) {
+            touchControls.applyLayout(layout);
+        }
     }
 
     private void applyViewport() {
@@ -228,7 +372,13 @@ public class GameScreen implements Screen, InputProcessor {
 
     private void renderHudOverlay() {
         batch.setProjectionMatrix(viewport.getCamera().combined);
-        GameRenderer.renderHud(batch, font, gridOffsetX, gridOffsetY, CELL_SIZE, score, level, currentDropInterval);
+        if (phoneHud != null) {
+            PhonePortraitHud.render(batch, font, phoneHud, score, level, currentDropInterval);
+            return;
+        }
+        GameRenderer.renderHud(batch, font, gridOffsetX, gridOffsetY, CELL_SIZE, score, level, currentDropInterval,
+                compactHud, hudBaselineY, nextGemsStartX, nextGemCellSize, hudVertical, hudLineHeight, hudLineGap,
+                nextGemsY, hudTextX, hudScoreY, hudLevelY, hudSpeedY, hudNextRowY);
     }
 
     /** 3D фонови орби (Fill) + камъни/ефекти (Fit) с актуален viewport при resize. */
@@ -371,7 +521,7 @@ public class GameScreen implements Screen, InputProcessor {
                 particles, matchMarkers,
                 score, level, currentDropInterval,
                 levelUpTimer, isGameOver, gameOverTimer,
-                visualFallingY);
+                visualFallingY, compactHud, nextGemsStartX, nextGemsY, nextGemCellSize);
 
             if (GameRenderer.uses3DGems()) {
                 render3DScene();
@@ -426,6 +576,10 @@ public class GameScreen implements Screen, InputProcessor {
         }
 
         // Normal game logic continues here
+        if (touchControls != null) {
+            touchControls.update(delta);
+        }
+
         // Подготовка на 3D рендера за този кадър (desktop only)
         if (GameRenderer.uses3DGems()) {
             Gem3DRenderer.beginFrame();
@@ -491,7 +645,7 @@ public class GameScreen implements Screen, InputProcessor {
             particles, matchMarkers,
             score, level, currentDropInterval,
             levelUpTimer, isGameOver, gameOverTimer,
-            visualFallingY);
+            visualFallingY, compactHud, nextGemsStartX, nextGemsY, nextGemCellSize);
 
         // Рисуване на всички 3D камъни върху фона (desktop only)
         if (GameRenderer.uses3DGems()) {
@@ -499,6 +653,7 @@ public class GameScreen implements Screen, InputProcessor {
         }
 
         renderHudOverlay();
+        renderTouchControls();
 
         // Level Up – само неонов надпис с 3D (без кутия)
         if (levelUpTimer > 0f) {
@@ -612,24 +767,41 @@ public class GameScreen implements Screen, InputProcessor {
         font.getData().setScale(1f);
     }
 
-    @Override
-    public boolean keyDown(int keycode) {
+    private void handlePause() {
+        game.pauseGame();
+    }
 
-        if (keycode == Input.Keys.ESCAPE) {
-            game.pauseGame();
-            return true;
+    private void handleMoveLeft() {
+        if (isGameOver) {
+            return;
         }
-
-        if (isGameOver) return false;
-
-        if (keycode == Input.Keys.LEFT && fallingBlock.canMove(-1)) {
+        if (fallingBlock.canMove(-1)) {
             fallingBlock.moveHorizontal(-1);
-        } else if (keycode == Input.Keys.RIGHT && fallingBlock.canMove(1)) {
+        }
+    }
+
+    private void handleMoveRight() {
+        if (isGameOver) {
+            return;
+        }
+        if (fallingBlock.canMove(1)) {
             fallingBlock.moveHorizontal(1);
-        } else if (keycode == Input.Keys.UP) {
-            fallingBlock.rotateBlock();
-        } else if (keycode == Input.Keys.DOWN && downKeyReleased && !isProcessingMatches
-            && fallingBlock.canRise() && (!isAnimating || !isHardDropping)) {
+        }
+    }
+
+    private void handleRotate() {
+        if (isGameOver) {
+            return;
+        }
+        fallingBlock.rotateBlock();
+    }
+
+    private void handleDownPressed() {
+        if (isGameOver) {
+            return;
+        }
+        if (downKeyReleased && !isProcessingMatches && fallingBlock.canRise()
+                && (!isAnimating || !isHardDropping)) {
             downKeyReleased = false;
             isHardDropping = true;
             if (!isAnimating) {
@@ -637,7 +809,35 @@ public class GameScreen implements Screen, InputProcessor {
                 animationProgress = 0f;
                 isAnimating = true;
             }
-            // Ако вече анимираме (меко падане), само ускоряваме – следващият кадър ще ползва hard drop скорост
+        }
+    }
+
+    private void handleDownReleased() {
+        if (downKeyReleased) {
+            return;
+        }
+        downKeyReleased = true;
+        scheduleDrop(getDropIntervalForLevel(level));
+    }
+
+    @Override
+    public boolean keyDown(int keycode) {
+
+        if (keycode == Input.Keys.ESCAPE) {
+            handlePause();
+            return true;
+        }
+
+        if (isGameOver) return false;
+
+        if (keycode == Input.Keys.LEFT) {
+            handleMoveLeft();
+        } else if (keycode == Input.Keys.RIGHT) {
+            handleMoveRight();
+        } else if (keycode == Input.Keys.UP) {
+            handleRotate();
+        } else if (keycode == Input.Keys.DOWN) {
+            handleDownPressed();
         }
 
         return true;
@@ -646,32 +846,51 @@ public class GameScreen implements Screen, InputProcessor {
     @Override
     public boolean keyUp(int keycode) {
         if (keycode == Input.Keys.DOWN) {
-            downKeyReleased = true;
-            scheduleDrop(getDropIntervalForLevel(level));
+            handleDownReleased();
         }
         return true;
     }
 
     @Override public boolean keyTyped(char character) { return false; }
-    @Override public boolean touchDown(int screenX, int screenY, int pointer, int button) { return false; }
 
-    @Override public boolean touchUp(int screenX, int screenY, int pointer, int button) { return false; }
-    @Override public boolean touchDragged(int screenX, int screenY, int pointer) { return false; }
+    @Override
+    public boolean touchDown(int screenX, int screenY, int pointer, int button) {
+        if (touchControls == null || viewport == null) {
+            return false;
+        }
+        unprojectTouch(screenX, screenY);
+        return touchControls.touchDown(touchWorld.x, touchWorld.y, pointer);
+    }
+
+    @Override
+    public boolean touchUp(int screenX, int screenY, int pointer, int button) {
+        if (touchControls == null || viewport == null) {
+            return false;
+        }
+        unprojectTouch(screenX, screenY);
+        return touchControls.touchUp(touchWorld.x, touchWorld.y, pointer);
+    }
+
+    @Override
+    public boolean touchDragged(int screenX, int screenY, int pointer) {
+        if (touchControls == null || viewport == null) {
+            return false;
+        }
+        unprojectTouch(screenX, screenY);
+        return touchControls.touchDragged(touchWorld.x, touchWorld.y, pointer);
+    }
     @Override public boolean touchCancelled(int screenX, int screenY, int pointer, int button) { return false; }
     @Override public boolean mouseMoved(int screenX, int screenY) { return false; }
     @Override public boolean scrolled(float amountX, float amountY) { return false; }
 
     @Override
     public void resize(int width, int height) {
-        if (viewport != null) {
-            viewport.update(width, height, true);
+        if (viewport == null) {
+            return;
         }
-        if (backgroundViewport != null) {
-            backgroundViewport.update(width, height, true);
-        }
-        if (GameRenderer.uses3DGems()) {
-            Gem3DRenderer.resize(GameConfig.WORLD_WIDTH, GameConfig.WORLD_HEIGHT);
-        }
+        setupGameViewport(width, height);
+        updateLayout();
+        updateFontScale();
     }
     @Override public void pause() {}
     @Override public void resume() {}

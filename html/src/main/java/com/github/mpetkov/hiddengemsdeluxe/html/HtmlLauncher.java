@@ -13,11 +13,11 @@ public class HtmlLauncher {
         Window window = Window.current();
         int startW = Math.max(1, window.getInnerWidth());
         int startH = Math.max(1, window.getInnerHeight());
+        float dpr = WebCanvasSync.devicePixelRatio();
 
         WebApplicationConfiguration config = new WebApplicationConfiguration("canvas");
-        // Fixed initial size so Gdx.graphics.setWindowedMode() can resize the canvas later.
-        config.width = startW;
-        config.height = startH;
+        config.width = Math.max(1, Math.round(startW * dpr));
+        config.height = Math.max(1, Math.round(startH * dpr));
         config.showDownloadLogs = true;
         config.antialiasing = true;
 
