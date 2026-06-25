@@ -113,11 +113,24 @@ public final class MobileWebLayout {
     }
 
     public static float worldWidth(Mode mode) {
-        return mode == Mode.MOBILE_PORTRAIT ? 1080f : GameConfig.WORLD_WIDTH;
+        if (mode == Mode.MOBILE_PORTRAIT) {
+            return 1080f;
+        }
+        if (mode == Mode.MOBILE_LANDSCAPE && isMobileWeb()) {
+            float aspect = Math.max(1.55f, (float) cssWidth() / cssHeight());
+            return 1080f * aspect;
+        }
+        return GameConfig.WORLD_WIDTH;
     }
 
     public static float worldHeight(Mode mode) {
-        return mode == Mode.MOBILE_PORTRAIT ? 1920f : GameConfig.WORLD_HEIGHT;
+        if (mode == Mode.MOBILE_PORTRAIT) {
+            return 1920f;
+        }
+        if (mode == Mode.MOBILE_LANDSCAPE && isMobileWeb()) {
+            return 1080f;
+        }
+        return GameConfig.WORLD_HEIGHT;
     }
 
     public static final class WelcomeLayout {
@@ -146,10 +159,10 @@ public final class MobileWebLayout {
             layout.btnWidth = 340;
             layout.btnHeight = 62;
         } else if (mode == Mode.MOBILE_LANDSCAPE) {
-            layout.padTop = 48;
+            layout.padTop = MobileWebLayout.isMobileWeb() ? 36 : 48;
             layout.titlePadBottom = 28;
             layout.rowPad = 12;
-            layout.fontSize = 28;
+            layout.fontSize = MobileWebLayout.isMobileWeb() ? 26 : 28;
             layout.btnWidth = 300;
             layout.btnHeight = 52;
         } else {
@@ -201,16 +214,15 @@ public final class MobileWebLayout {
 
         layout.compactHud = true;
         layout.hudVertical = mode == Mode.MOBILE_PORTRAIT;
-        boolean phonePortrait = mode == Mode.MOBILE_PORTRAIT && isMobileWeb();
-        float uniform = layout.hudVertical ? portraitLayoutUniform() : 1f;
-        float bottomBand = phonePortrait ? visibleH * 0.20f : (mode == Mode.MOBILE_PORTRAIT ? visibleH * 0.22f : visibleH * 0.31f);
-        float topBand = phonePortrait ? visibleH * 0.12f : (mode == Mode.MOBILE_PORTRAIT ? visibleH * 0.22f : visibleH * 0.11f);
-        float sidePad = phonePortrait ? visibleW * 0.018f : visibleW * 0.035f;
+        boolean portraitWeb = mode == Mode.MOBILE_PORTRAIT;
+        float bottomBand = portraitWeb ? visibleH * 0.20f : visibleH * 0.26f;
+        float topBand = portraitWeb ? visibleH * 0.12f : visibleH * 0.10f;
+        float sidePad = portraitWeb ? visibleW * 0.018f : visibleW * 0.02f;
 
         applyMobileControls(layout, mode, visibleW, visibleH, camX, camY, bottomBand, topBand);
 
         float gridAreaW = visibleW - sidePad * 2f;
-        if (phonePortrait) {
+        if (portraitWeb) {
             // Grid, HUD, and font scale are filled by PhonePortraitHud.apply() in GameScreen.
             layout.cellSize = 48;
             layout.gridOffsetX = Math.round(camX - GameConstants.COLS * layout.cellSize / 2f);
@@ -219,66 +231,22 @@ public final class MobileWebLayout {
                     + layout.controlsSpacing * 0.88f
                     + layout.controlRadius;
         } else {
+            // Phone landscape: side columns like desktop (stats left, next gems right).
+            final int sideCols = 2;
             float gridAreaH = visibleH - bottomBand - topBand;
-            if (layout.hudVertical) {
-                int heightCell = Math.max(24, (int) (gridAreaH / GameConstants.ROWS * PORTRAIT_CELL_BOOST));
-                int widthCell = Math.max(24, (int) (gridAreaW / GameConstants.COLS));
-                layout.cellSize = Math.min(heightCell, widthCell);
-            } else {
-                layout.cellSize = Math.max(24, (int) Math.min(gridAreaH / GameConstants.ROWS, gridAreaW / GameConstants.COLS));
-            }
-        }
-
-        int gridW = GameConstants.COLS * layout.cellSize;
-        int gridH = GameConstants.ROWS * layout.cellSize;
-        if (!phonePortrait) {
-            layout.gridOffsetX = Math.round(camX - gridW / 2f);
-            layout.gridOffsetY = Math.round(camY - visibleH / 2f + bottomBand);
-        }
-
-        if (layout.hudVertical && !phonePortrait) {
-            applyPortraitHudBand(layout, camY, visibleH, topBand, uniform);
-        } else if (!layout.hudVertical) {
-            layout.hudLineHeight = Math.max(30f, layout.cellSize * 0.34f);
-            layout.hudLineGap = Math.max(12f, layout.cellSize * 0.12f);
-            layout.nextGemCellSize = Math.max(28, (int) (layout.cellSize * 0.48f));
-            float gemGap = layout.nextGemCellSize * 0.20f;
-            float gemsRowW = 3f * layout.nextGemCellSize + 2f * gemGap;
-            layout.hudBaselineY = camY + visibleH / 2f - topBand * 0.42f;
-            layout.nextGemsStartX = layout.gridOffsetX + gridW - gemsRowW;
-            layout.nextGemsY = layout.hudBaselineY - layout.nextGemCellSize * 0.55f;
-            float gridTop = layout.gridOffsetY + gridH;
-            float hudFloor = gridTop + layout.cellSize * 0.10f;
-            if (layout.hudBaselineY < hudFloor) {
-                layout.hudBaselineY = hudFloor + layout.hudLineHeight * 0.5f;
-                layout.nextGemsY = layout.hudBaselineY - layout.nextGemCellSize * 0.55f;
-            }
+            int heightCell = Math.max(24, (int) (gridAreaH / GameConstants.ROWS * 1.06f));
+            int widthCell = Math.max(24, (int) (gridAreaW / (GameConstants.COLS + sideCols) * 1.02f));
+            layout.cellSize = Math.min(heightCell, widthCell);
+            int gridW = GameConstants.COLS * layout.cellSize;
+            int gridH = GameConstants.ROWS * layout.cellSize;
+            float totalW = gridW + sideCols * layout.cellSize;
+            layout.gridOffsetX = Math.round(camX - totalW / 2f + layout.cellSize);
+            layout.gridOffsetY = Math.round(camY - visibleH / 2f + bottomBand + (gridAreaH - gridH) / 2f);
+            layout.compactHud = false;
+            layout.hudVertical = false;
         }
 
         return layout;
-    }
-
-    /**
-     * Mirrors {@link #applyMobileControls}: items sit in the top band using fixed fractions of
-     * band height, independent of grid pixel position.
-     */
-    private static void applyPortraitHudBand(Layout layout, float camY, float visibleH,
-                                             float topBand, float uniform) {
-        float bandTop = camY + visibleH / 2f;
-        float padTop = topBand * 0.10f * uniform;
-        layout.hudRowSpacing = topBand * 0.145f * uniform;
-        layout.hudScoreY = bandTop - padTop;
-        layout.hudLevelY = layout.hudScoreY - layout.hudRowSpacing;
-        layout.hudSpeedY = layout.hudLevelY - layout.hudRowSpacing;
-        layout.hudNextRowY = layout.hudSpeedY - layout.hudRowSpacing;
-        layout.hudTextX = layout.gridOffsetX;
-        layout.hudLineHeight = layout.hudRowSpacing * 0.48f;
-        layout.hudLineGap = 0f;
-        layout.hudBaselineY = layout.hudScoreY;
-        layout.nextGemCellSize = Math.max(34, Math.round(layout.hudLineHeight * 1.5f));
-        // Gem rects bottom-aligned to the "Next" text baseline.
-        layout.nextGemsY = layout.hudNextRowY;
-        layout.nextGemsStartX = layout.hudTextX + 52f;
     }
 
     private static void applyWebDesktopControls(Layout layout, float visibleW, float visibleH,
@@ -296,20 +264,18 @@ public final class MobileWebLayout {
                                             float camX, float camY, float bottomBand, float topBand) {
         layout.controlRadius = Math.max(36f, Math.min(visibleW, visibleH) * 0.052f);
         layout.controlsSpacing = layout.controlRadius * 2.25f;
-        layout.controlsCenterX = camX - visibleW * (mode == Mode.MOBILE_PORTRAIT ? 0f : 0.28f);
-        if (mode == Mode.MOBILE_PORTRAIT && isMobileWeb()) {
+        if (mode == Mode.MOBILE_PORTRAIT) {
+            layout.controlsCenterX = camX;
             layout.controlsCenterY = camY - visibleH / 2f + bottomBand * 0.56f;
+            layout.pauseY = camY + visibleH / 2f - topBand * 0.50f;
         } else {
+            layout.controlsCenterX = camX - visibleW * 0.28f;
             layout.controlsCenterY = camY - visibleH / 2f + bottomBand * 0.52f;
+            layout.pauseY = camY + visibleH / 2f - topBand * 0.72f;
         }
 
         layout.pauseRadius = layout.controlRadius * 0.88f;
         layout.pauseX = camX + visibleW * 0.38f;
-        if (mode == Mode.MOBILE_PORTRAIT && isMobileWeb()) {
-            layout.pauseY = camY + visibleH / 2f - topBand * 0.50f;
-        } else {
-            layout.pauseY = camY + visibleH / 2f - topBand * 0.72f;
-        }
     }
 
     private static void computeDesktop(Layout layout) {

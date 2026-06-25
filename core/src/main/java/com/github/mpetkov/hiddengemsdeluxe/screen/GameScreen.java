@@ -284,6 +284,17 @@ public class GameScreen implements Screen, InputProcessor {
         }
     }
 
+    private void ensureOrientationLayout() {
+        if (!MobileWebLayout.isWeb() || viewport == null) {
+            return;
+        }
+        MobileWebLayout.Mode mode = MobileWebLayout.resolveMode();
+        if (mode != mobileLayoutMode) {
+            setupGameViewport(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+            updateLayout();
+        }
+    }
+
     private void updateLayout() {
         OrthographicCamera cam = (OrthographicCamera) viewport.getCamera();
         MobileWebLayout.Layout layout = MobileWebLayout.compute(
@@ -313,7 +324,7 @@ public class GameScreen implements Screen, InputProcessor {
 
         phoneHud = null;
         if (mobileLayoutMode == MobileWebLayout.Mode.MOBILE_PORTRAIT
-                && MobileWebLayout.isMobileWeb()
+                && MobileWebLayout.isWeb()
                 && font != null) {
             phoneHud = PhonePortraitHud.apply(
                     layout,
@@ -506,6 +517,7 @@ public class GameScreen implements Screen, InputProcessor {
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT | GL20.GL_DEPTH_BUFFER_BIT);
 
         renderBackground(delta);
+        ensureOrientationLayout();
         applyViewport();
 
         // Check for game over early and skip all game logic
