@@ -2,6 +2,8 @@
 
 A match-3 style puzzle game built with [libGDX](https://libgdx.com/), featuring neon visuals, 3D gem effects (desktop), and dynamic animated backgrounds. Play in the browser or on desktop.
 
+**Play online:** [hgd-game.com](https://hgd-game.com)
+
 ![Hidden Gems Deluxe](https://i.postimg.cc/5tjSHYRB/hgd.png)
 
 ## About the Game
