@@ -43,6 +43,10 @@ public final class WebCanvasSync {
             + "return changed;\n")
     public static native boolean resizeCanvasBuffer(String canvasId, int cssW, int cssH, int bufferW, int bufferH);
 
+    /** Hides the static HTML splash once LibGDX is ready. */
+    @JSBody(script = "var splash = document.getElementById('loading-screen'); if (splash) { splash.style.display = 'none'; }")
+    public static native void hideLoadingScreen();
+
     public static boolean resizeCanvasBuffer(int cssW, int cssH, int bufferW, int bufferH) {
         return resizeCanvasBuffer(CANVAS_ID, cssW, cssH, bufferW, bufferH);
     }

@@ -44,6 +44,20 @@ public class BuildWeb {
         File targetDir = new File(outputDir, "webapp");
         copyWebFile(webappDir, targetDir, "index.html");
         copyFavicon(targetDir);
+        copyStartupLogo(targetDir);
+    }
+
+    private static void copyStartupLogo(File targetDir) {
+        File target = new File(targetDir, "startup-logo.png");
+        try (var in = BuildWeb.class.getClassLoader().getResourceAsStream("startup-logo.png")) {
+            if (in == null) {
+                throw new RuntimeException("Missing startup-logo.png on classpath (backend-web)");
+            }
+            targetDir.mkdirs();
+            Files.copy(in, target.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to copy startup-logo.png", e);
+        }
     }
 
     private static void copyFavicon(File targetDir) {

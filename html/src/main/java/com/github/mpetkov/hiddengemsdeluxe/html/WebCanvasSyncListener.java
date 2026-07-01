@@ -31,6 +31,7 @@ public class WebCanvasSyncListener implements ApplicationListener {
         });
         syncCanvas();
         delegate.create();
+        WebCanvasSync.hideLoadingScreen();
     }
 
     @Override
